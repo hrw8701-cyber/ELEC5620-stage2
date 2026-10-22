@@ -13,4 +13,11 @@ if(-not (Get-NetTCPConnection -LocalPort 8001 -State Listen -ErrorAction Silentl
 if(-not (Get-NetTCPConnection -LocalPort 5622 -State Listen -ErrorAction SilentlyContinue)){
  Start-Process -FilePath (Get-Command node).Source -ArgumentList 'node_modules/vite/bin/vite.js' -WorkingDirectory (Join-Path $PWD 'frontend') -WindowStyle Hidden -RedirectStandardOutput '.runtime/frontend.log' -RedirectStandardError '.runtime/frontend-error.log' | Out-Null
 }
-Write-Host 'Development preview: http://127.0.0.1:5622/ . Check /api/health to confirm readiness.'
+$ready=$false
+$deadline=(Get-Date).AddSeconds(45)
+do {
+ try { $health=Invoke-RestMethod 'http://127.0.0.1:8001/api/health' -TimeoutSec 3; if($health.status -eq 'ok'){$ready=$true;break} } catch {}
+ Start-Sleep -Milliseconds 500
+} while((Get-Date) -lt $deadline)
+if(-not $ready){throw 'API did not become ready. See .runtime/api-error.log and check database connectivity.'}
+Write-Host 'Ready: http://127.0.0.1:5622/ (database verified; campus model requires VPN).'

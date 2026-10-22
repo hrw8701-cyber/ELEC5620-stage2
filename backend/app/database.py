@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 from psycopg.types.json import Jsonb
 from . import config
 from .domain import cents
@@ -12,8 +13,32 @@ from .domain import cents
 COLLECTIONS = {'items': 'listings', 'quotes': 'quotes', 'orders': 'orders', 'policies': 'policies', 'exceptions': 'cases', 'audit': 'audit_events'}
 
 
+_pool = None
+
+
+def open_pool():
+    global _pool
+    _pool = ConnectionPool(config.DATABASE_URL, min_size=2, max_size=6,
+                           kwargs={'row_factory': dict_row, 'connect_timeout': 10},
+                           timeout=20, open=False)
+    _pool.open(wait=True, timeout=30)
+
+
+def close_pool():
+    global _pool
+    if _pool is not None:
+        _pool.close()
+        _pool = None
+
+
+@contextmanager
 def connect():
-    return psycopg.connect(config.DATABASE_URL, row_factory=dict_row)
+    if _pool is not None:
+        with _pool.connection() as conn:
+            yield conn
+    else:
+        with psycopg.connect(config.DATABASE_URL, row_factory=dict_row, connect_timeout=10) as conn:
+            yield conn
 
 
 def seed():
@@ -34,8 +59,11 @@ def read(conn, lock=False):
     row = conn.execute('SELECT payload FROM app_meta WHERE id=1' + (' FOR UPDATE' if lock else '')).fetchone()
     s = deepcopy(row['payload'])
     ordering = s.pop('_ordering', {})
-    for key, table in COLLECTIONS.items():
-        values = {r['id']: r['payload'] for r in conn.execute(f'SELECT id,payload FROM {table}').fetchall()}
+    query = ' UNION ALL '.join(f"SELECT '{key}' AS collection,id,payload FROM {table}" for key, table in COLLECTIONS.items())
+    grouped = {key: {} for key in COLLECTIONS}
+    for record in conn.execute(query).fetchall():
+        grouped[record['collection']][record['id']] = record['payload']
+    for key, values in grouped.items():
         s[key] = [values[k] for k in ordering.get(key, values.keys()) if k in values]
     return s
 
@@ -47,6 +75,12 @@ def snapshot():
 
 
 def save(conn, s):
+    # Batch independent writes into one network round trip, preserving the transaction.
+    with conn.pipeline():
+        _save(conn, s)
+
+
+def _save(conn, s):
     meta = {k: v for k, v in s.items() if k not in COLLECTIONS}
     meta['_ordering'] = {}
     for key, table in COLLECTIONS.items():

@@ -5,10 +5,15 @@ from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
-url = os.getenv('TEST_DATABASE_URL') or dotenv_values(ROOT / '.env').get('DATABASE_URL', '')
-if not os.getenv('TEST_DATABASE_URL'):
-    url = url.rsplit('/', 1)[0] + '/secondspace_test'
-if 'secondspace_test' not in url:
+from urllib.parse import urlsplit, urlunsplit
+url = os.getenv('TEST_DATABASE_URL') or dotenv_values(ROOT / '.runtime/test.env').get('TEST_DATABASE_URL')
+if not url:
+    source = dotenv_values(ROOT / '.env').get('DATABASE_URL', '')
+    parsed = urlsplit(source)
+    if parsed.hostname not in {'localhost', '127.0.0.1'}:
+        raise RuntimeError('Set TEST_DATABASE_URL to an isolated test database; never derive it from cloud credentials.')
+    url = urlunsplit(parsed._replace(path='/secondspace_test'))
+if urlsplit(url).path != '/secondspace_test':
     raise RuntimeError('Tests must use the isolated secondspace_test database.')
 os.environ['DATABASE_URL'] = url
 os.environ['MODEL_MODE'] = 'fixture'

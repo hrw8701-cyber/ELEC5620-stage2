@@ -22,11 +22,11 @@
 ## 文档与部署
 
 - [架构与节点职责](docs/ARCHITECTURE.md)
-- [本机、Azure、Docker、kind 完整部署步骤](docs/DEPLOYMENT.md)
+- [本机、Google Cloud SQL、Docker、kind 完整部署步骤](docs/DEPLOYMENT.md)
 - API 文档：http://127.0.0.1:8001/docs
-- Docker Compose：`docker compose up --build -d`（.env 配置 Azure URL）
+- Docker Compose：`docker compose up --build -d`（.env 配置 Cloud SQL URL）
 - 本地 PostgreSQL Compose：`docker compose -f compose.yaml -f compose.local.yaml up --build -d`
-- Kubernetes：`./scripts/deploy-kind.ps1 -DatabaseMode Azure` 或 `Local`
+- Kubernetes：`./scripts/deploy-kind.ps1 -DatabaseMode CloudSQL` 或 `Local`
 
 ## 验证
 
@@ -41,4 +41,6 @@ node frontend/tests/api-flow.mjs
 
 无真实支付、邮件或物流接口；无生产账号认证。默认 MODEL_MODE=live；fixture 仅测试使用。图片模型不可用则拒绝发布，文本解析可回退关键词并记录模式。
 
-Azure 凭据、Docker/kind 环境需要配置；脚本存在不代表已完成外部部署。原 stage2/react-frontend 保留，旧浏览器数据不自动导入或覆盖。
+本机应用已接入 Google Cloud SQL；Docker/kind 仍需安装并实际验证。原 stage2/react-frontend 保留，旧浏览器数据不自动导入或覆盖。
+
+人工验收入口与已知边界见 [最终交付说明](docs/FINAL-HANDOFF.md)。

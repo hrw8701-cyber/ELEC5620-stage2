@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     image: second-space-backend:demo
-    env_file: .env
+    env_file: ${APP_ENV_FILE:-.env}
     environment:
       UPLOAD_DIR: /data/uploads
     volumes:

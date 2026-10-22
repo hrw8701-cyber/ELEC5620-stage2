@@ -26,12 +26,17 @@ graph_lock = Lock()
 
 @asynccontextmanager
 async def lifespan(app):
-    db.setup()
-    config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    with PostgresSaver.from_conn_string(config.DATABASE_URL) as saver:
-        saver.setup()
-        app.state.graph = build_graph(saver)
-        yield
+    db.open_pool()
+    try:
+        db.setup()
+        config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        with PostgresSaver.from_conn_string(config.DATABASE_URL) as saver:
+            saver.setup()
+            app.state.graph = build_graph(saver)
+            yield
+    finally:
+        db.close_pool()
+
 
 
 app = FastAPI(title='Second Space API', version='0.2.0', lifespan=lifespan)

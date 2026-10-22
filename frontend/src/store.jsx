@@ -7,9 +7,9 @@ export function Store({children}){
  const route=useLocation();
  const currentIdentity=JSON.stringify(identity());
  const [loadedIdentity,setLoadedIdentity]=useState('');
- const t=useLanguage(),[s,setS]=useState(null),[notice,setNotice]=useState(''),[failure,setFailure]=useState(false),epoch=useRef(0),pending=useRef(0);
+ const t=useLanguage(),[s,setS]=useState(null),[notice,setNotice]=useState(''),[failure,setFailure]=useState(false),epoch=useRef(0),pending=useRef(0),refreshing=useRef(false);
  const headers=()=>{const x=identity();return {'X-Demo-Role':x.role,'X-Property-Token':x.token};};
- const refresh=async()=>{const stamp=epoch.current;const who=JSON.stringify(identity());if(pending.current)return;try{const r=await fetch('/api/state',{headers:headers()});if(!r.ok)throw Error('服务暂时不可用，请稍后重试。');const data=await r.json();if(stamp===epoch.current&&!pending.current){setS(data);setLoadedIdentity(who);setFailure(false);}}catch(e){if(stamp===epoch.current){setFailure(true);setNotice(e.message);}}};
+ const refresh=async()=>{const stamp=epoch.current;const who=JSON.stringify(identity());if(pending.current||refreshing.current)return;refreshing.current=true;try{const r=await fetch('/api/state',{headers:headers()});if(!r.ok)throw Error('服务暂时不可用，请稍后重试。');const data=await r.json();if(stamp===epoch.current&&!pending.current){setS(data);setLoadedIdentity(who);setFailure(false);}}catch(e){if(stamp===epoch.current){setFailure(true);setNotice(e.message);}}finally{refreshing.current=false;}};
  useEffect(()=>{epoch.current++;refresh();},[currentIdentity]);
  useEffect(()=>{window.addEventListener('focus',refresh);const timer=setInterval(refresh,2000);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);};},[]);
  useEffect(()=>{if(notice){const timer=setTimeout(()=>setNotice(''),6000);return()=>clearTimeout(timer);}},[notice]);

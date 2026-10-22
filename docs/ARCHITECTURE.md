@@ -4,7 +4,7 @@
 
 依据 `技术栈1.md` 实现；其中原始 Agent 规则若与用户后来确认的 MVP 不同，以当前前端为准。
 
-- Python 3.12、FastAPI、psycopg、Azure PostgreSQL Flexible Server。
+- Python 3.12、FastAPI、psycopg、Google Cloud SQL for PostgreSQL。
 - LangChain 工具与模型适配；LangGraph 负责 6 个业务节点 + SupervisionAgent。
 - 唯一允许模型为 `campus-qwen`，Base URL 和 API key 由 `.env` 注入。
 - 订单仅 pending / transit / received / settled。settled 在买家和卖家端映射为交易完成。

@@ -4,13 +4,15 @@ const base=process.env.BASE_URL||'http://127.0.0.1:5622/';
 const browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL||'msedge',headless:true});
 const buyer=await browser.newContext(),property=await browser.newContext();
 const page=await buyer.newPage(),other=await property.newPage();
+page.setDefaultTimeout(90000);other.setDefaultTimeout(90000);
 async function command(operation,payload={},role='buyer'){
- const response=await buyer.request.post(base+'api/actions',{headers:{'X-Demo-Role':role},data:{operation,payload,requestId:crypto.randomUUID()}});
+ const response=await buyer.request.post(base+'api/actions',{timeout:120000,headers:{'X-Demo-Role':role},data:{operation,payload,requestId:crypto.randomUUID()}});
  assert.equal(response.status(),200,await response.text());return (await response.json()).result;
 }
 try{
  const state=await buyer.request.get(base+'api/state').then(r=>r.json());
- const item=state.items.find(i=>i.status==='published');assert.ok(item);
+ const template=state.items.find(i=>i.status==='published');assert.ok(template);
+ const item=await command('listing',{form:{...template,name:'Cross-browser QA '+Date.now(),contact:'qa@example.test'}},'seller');assert.equal(item.status,'published');
  const quote=await command('quote',{itemId:item.id,delivery:{address:'Cross browser test address',door:1000,doorHeight:1000,floor:2,movers:2,access:'stairs',loading:true,pickupAccess:true,provider:'economy',pickupProperty:true,pickupEmail:'pickup@example.test',deliveryProperty:true,deliveryEmail:'delivery@example.test'}});
  const order=await command('purchase',{quoteId:quote.id,method:'BPAY'});
  await page.goto(base+'#/buyer/orders/'+order.id);await page.getByRole('heading',{name:'处理时间线'}).waitFor();

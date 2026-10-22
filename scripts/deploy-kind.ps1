@@ -1,4 +1,4 @@
-param([ValidateSet('Azure','Local')][string]$DatabaseMode='Azure', [string]$EnvFile='.env')
+param([ValidateSet('CloudSQL','Azure','Local')][string]$DatabaseMode='CloudSQL', [string]$EnvFile='.env.cloud')
 $ErrorActionPreference='Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 foreach($tool in @('docker','kind','kubectl')) { if(-not (Get-Command $tool -ErrorAction SilentlyContinue)){throw "Install $tool before deployment."} }
@@ -8,6 +8,7 @@ $settings=@{}
 Get-Content -LiteralPath $EnvFile | ForEach-Object { if($_ -match '^([A-Z_]+)=(.*)$'){$settings[$matches[1]]=$matches[2]} }
 if($settings.MODEL_NAME -ne 'campus-qwen'){throw 'Only campus-qwen is allowed.'}
 if($DatabaseMode -eq 'Azure' -and $settings.DATABASE_URL -notmatch 'postgres\.database\.azure\.com.*sslmode=(require|verify-full)'){throw 'Set the Azure PostgreSQL URL with TLS in .env.'}
+if($DatabaseMode -eq 'CloudSQL' -and $settings.DATABASE_URL -notmatch '^postgres(?:ql)?://.+[?&]sslmode=(require|verify-full)(&|$)'){throw 'Set the Cloud SQL PostgreSQL URL with TLS in the selected private env file.'}
 if($DatabaseMode -eq 'Local'){
  if(-not $settings.POSTGRES_PASSWORD){throw 'Set POSTGRES_PASSWORD in .env.'}
  $encoded=[uri]::EscapeDataString($settings.POSTGRES_PASSWORD)
