@@ -1,0 +1,21 @@
+import React,{createContext,useContext,useState,useEffect,useRef} from 'react';
+import {useLanguage} from './Language';
+import {useLocation} from 'react-router-dom';
+const C=createContext();
+function identity(){const h=location.hash;return {role:h.startsWith('#/manager')?'manager':h.startsWith('#/seller')?'seller':h.startsWith('#/property-confirm/')?'property':'buyer',token:h.startsWith('#/property-confirm/')?decodeURIComponent(h.split('/')[2]):''};}
+export function Store({children}){
+ const route=useLocation();
+ const currentIdentity=JSON.stringify(identity());
+ const [loadedIdentity,setLoadedIdentity]=useState('');
+ const t=useLanguage(),[s,setS]=useState(null),[notice,setNotice]=useState(''),[failure,setFailure]=useState(false),epoch=useRef(0),pending=useRef(0);
+ const headers=()=>{const x=identity();return {'X-Demo-Role':x.role,'X-Property-Token':x.token};};
+ const refresh=async()=>{const stamp=epoch.current;const who=JSON.stringify(identity());if(pending.current)return;try{const r=await fetch('/api/state',{headers:headers()});if(!r.ok)throw Error('服务暂时不可用，请稍后重试。');const data=await r.json();if(stamp===epoch.current&&!pending.current){setS(data);setLoadedIdentity(who);setFailure(false);}}catch(e){if(stamp===epoch.current){setFailure(true);setNotice(e.message);}}};
+ useEffect(()=>{epoch.current++;refresh();},[currentIdentity]);
+ useEffect(()=>{window.addEventListener('focus',refresh);const timer=setInterval(refresh,2000);return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);};},[]);
+ useEffect(()=>{if(notice){const timer=setTimeout(()=>setNotice(''),6000);return()=>clearTimeout(timer);}},[notice]);
+ const run=async(operation,payload={})=>{pending.current++;epoch.current++;const stamp=epoch.current;try{const r=await fetch('/api/actions',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({operation,payload,requestId:crypto.randomUUID()})});const data=await r.json();if(!r.ok)throw Error(typeof data.detail==='string'?data.detail:'操作未完成，请检查输入。');if(stamp===epoch.current){setS(data.state);setLoadedIdentity(JSON.stringify(identity()));}return data.result;}catch(e){setNotice(e.message||'操作未完成');return null;}finally{pending.current--;if(!pending.current)refresh();}};
+ const reset=()=>run('reset');
+ if(!s||loadedIdentity!==currentIdentity)return <main className="public-page"><p role="status">{t(failure?'服务暂时不可用，请稍后重试。':'正在加载…')}</p><button onClick={refresh}>{t('重试')}</button></main>;
+ return <C.Provider value={{s,run,notify:setNotice,reset}}>{children}{notice&&<div className="toast" role="status">{t(notice)}<button onClick={()=>setNotice('')}>×</button></div>}</C.Provider>;
+}
+export const useStore=()=>useContext(C);
