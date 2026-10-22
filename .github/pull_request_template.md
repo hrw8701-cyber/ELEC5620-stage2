@@ -12,7 +12,7 @@ Replace browser-only persistence with the Python/PostgreSQL API while preserving
 
 ## External verification
 
-- Azure database connection: state actual result
+- Google Cloud SQL database connection: state actual result
 - campus-qwen text and vision: state actual result separately
 - Docker/kind rollout: state actual result
 - Independent reviewer: assign another group member before merge

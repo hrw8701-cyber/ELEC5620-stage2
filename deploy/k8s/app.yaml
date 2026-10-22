@@ -43,7 +43,9 @@ spec:
           readinessProbe:
             httpGet: {path: /api/health, port: 8001}
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
           resources:
             requests: {cpu: 100m, memory: 256Mi}
             limits: {cpu: '2', memory: 1Gi}
