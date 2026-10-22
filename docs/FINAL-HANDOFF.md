@@ -1,10 +1,12 @@
 # Second Space · MVP 人工验收版
 
-日期：2026-10-22。入口：http://127.0.0.1:5622/ 。旧 5621 保留，不是本次验收入口。
+日期：2026-10-22。当前最终入口：http://127.0.0.1:5623/ （kind/Kubernetes）。Windows 本机备用入口：http://127.0.0.1:5622/ 。旧 5621 保留，不是本次验收入口。
 
 ## 启动
 
-在本机双击 `Start-Second-Space.cmd`，或在仓库根目录运行 `./scripts/start-dev.ps1`。校园模型需保持 VPN 连接。启动脚本等待数据库健康检查通过后才显示 Ready。界面右上角切换中英文。
+当前 kind 版本已运行，打开 5623 即可；保持 Docker Desktop 和校园 VPN 运行。重启电脑后先启动 Docker Desktop，等待引擎启动，再打开 5623。若需重新部署，运行 `./scripts/deploy-kind.ps1 -DatabaseMode CloudSQL -EnvFile .env.cloud`。
+
+备用本机版：双击 `Start-Second-Space.cmd`，或运行 `./scripts/start-dev.ps1`，访问 5622。启动脚本等待数据库健康检查通过后才显示 Ready。界面右上角切换中英文。
 
 当前：React + FastAPI + Google Cloud SQL PostgreSQL + LangChain/LangGraph。模型只有 campus-qwen。模型输出额度 2048，推理图片缩放至最长边 512，不改变原图；截断明确分类为 ModelOutputTruncated。数据库采用连接池、合并读取与批量事务写入。
 
@@ -31,10 +33,12 @@
 
 自动化后端测试使用本机隔离数据库 secondspace_test，由 `.runtime/test.env` 指定。不会清空当前云演示数据库。浏览器测试会新增演示记录，请勿在需要冻结演示数据时执行。
 
-## 仍需外部协助
+## 团队交付与人工验收
 
-- GitHub：本机没有可用推送凭据，需要有仓库写权限的成员完成登录。代码本地保存；远端推送、PR、CI 与独立 Review 不能视为已完成。
-- Docker/kind：本机没有 Docker 引擎，WSL 也未安装。已确认当前进程没有管理员权限，需要电脑使用者完成系统组件安装、管理员授权及必要的重启，再运行已准备的 Compose/kind 脚本。当前可用版本是 Windows 本机进程连接云数据库。
+- 最终团队仓库：https://github.com/muzi-haoming/ELEC5620-stage2 。使用已授权的 hrw8701-cyber，经个人 fork 提交 PR #1。CI 已通过，包括两个 Docker 镜像构建。该账号只有团队读取权限，独立审核与合并需团队有权限的成员完成。
+- 学校账号 hwan9982 属于独立的 github.sydney.edu.au。学校私有副本只作备份，其 PR 已关闭，不是最终提交目标。
+- WSL/Docker 已在 D:\tools 安装并启动，无需重启。双击 Start-Containers.cmd 可启动 Compose（5623），双击 Start-Second-Space.cmd 可启动 Windows 本机版（5622）。同一个 5623 端口不能同时运行 Compose 和 kind。
+- 最终由组员使用真实三方向家具照片做视觉正例验收，并按上述三角色流程确认演示效果。
 
 ## 范围边界
 
@@ -44,4 +48,8 @@
 
 后端 20 项、前端规则 23 项、前端生产构建均通过。云端完整网页流程、BPAY、独立浏览器物业同步、Agent 可见性和中英文返回字段通过。16 个实际加载的桌面/手机路由检查通过。云端人工决策中断在重建连接/图后成功恢复。凭据扫描未发现真实密钥或数据库密码进入源码。
 
-用户随后要求安装 WSL/Docker 到 D:\tools，安装工作继续进行中；以最终安装记录为准。
+容器版已通过真实 Cloud SQL、容器内校园模型文本调用，以及卖家至买家验收/管理员结算的完整流程与 BPAY。安装路径与版本见 LOCAL-SETUP.md，详细证据及网络波动记录见 VERIFICATION.md。
+
+kind 部署补充：前后端 Pod Ready，2 GiB uploads PVC Bound，云数据库 TLS 与 Pod 内真实 campus-qwen 调用通过；Compose 切换至 kind 后 19 条订单 ID/状态/结算时间保持一致。图片迁移脚本已适配非 root 用户，不修改卷根目录权限。
+
+Kubernetes 入口的 16 个桌面/手机路由与跨角色导航也通过；实际替换 backend Pod 后，订单与图片均保留。当前 Start-Containers.cmd 会识别已运行的 kind 并显示 Ready；没有 kind 时才启动 Compose。

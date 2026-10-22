@@ -17,7 +17,9 @@ if($Target -eq 'Compose'){
  # Stream a relative archive to avoid kubectl interpreting a Windows drive colon as a remote path.
  $archive=Join-Path $env:TEMP ('second-space-uploads-'+[guid]::NewGuid().ToString()+'.tar')
  try {
-  & tar -cf $archive -C $sourcePath .
+  $entries=@(Get-ChildItem -LiteralPath $sourcePath | Select-Object -ExpandProperty Name)
+  if($entries.Count -eq 0){Write-Host 'No uploads to copy.';return}
+  & tar -cf $archive -C $sourcePath -- @entries
   if($LASTEXITCODE -ne 0){throw 'Upload archive failed.'}
   $previous=Get-Location
   try {
@@ -25,7 +27,7 @@ if($Target -eq 'Compose'){
    & kubectl --context kind-second-space -n second-space cp (Split-Path $archive -Leaf) "${pod}:/tmp/uploads.tar"
    if($LASTEXITCODE -ne 0){throw 'Upload transfer failed.'}
   } finally {Set-Location $previous}
-  & kubectl --context kind-second-space -n second-space exec $pod -- tar -xf /tmp/uploads.tar -C /data/uploads
+  & kubectl --context kind-second-space -n second-space exec $pod -- tar --no-overwrite-dir --no-same-owner --no-same-permissions -xf /tmp/uploads.tar -C /data/uploads
   if($LASTEXITCODE -ne 0){throw 'Upload extraction failed.'}
  } finally {if(Test-Path -LiteralPath $archive){Remove-Item -LiteralPath $archive}}
 }

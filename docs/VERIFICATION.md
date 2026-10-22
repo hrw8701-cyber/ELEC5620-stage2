@@ -47,3 +47,20 @@
 - 两个独立浏览器的物业同步、中英文字段、买家 Agent 隐藏、管理员 Agent 可见及四状态映射在云端再次通过。
 - 真实加载后的 16 个桌面/手机路由检查通过，无渲染异常或横向溢出。
 - 云端 LangGraph 人工中断：关闭连接并重建图后仍恢复到 HumanReview，提交处理理由后成功继续结束；该独立检查不更改订单或现行政策。
+
+## GitHub 与 Docker 安装补充
+
+- 用户最终选择 GitHub.com 的 hrw8701-cyber，经个人 fork 向原团队仓库 muzi-haoming/ELEC5620-stage2 提交 PR #1。学校 hwan9982 仓库仅保留私有备份，学校 PR 已关闭。
+- GitHub CI 运行 39734118135 成功：隔离 PostgreSQL 后端测试、前端规则测试/构建、Python 后端和 Nginx 前端 Docker 镜像构建均通过。学校服务器 Actions 不算入该结果。
+- WSL 3.0.3.0 与 Docker Desktop 4.96.2 安装完成，Engine 29.9.2 已运行，无需重启。程序 D:\tools\Docker，数据 D:\tools\DockerData。详见 LOCAL-SETUP.md。
+- Compose 连接真实 Cloud SQL，容器内真实 campus-qwen 文本解析通过。迁移后的 IMG 图片 HTTP 返回内容与本地原件摘要一致。
+- 首次多个浏览器测试并行时观察到云响应超时；临时栈诊断显示等待数据库网络响应，无数据库锁阻塞。恢复正常启动、串行重跑后，完整流程通过：卖家上架 → 推荐 → Visa → 物业回复 → 配送 → 验收即时结算 → 管理员政策 → BPAY；无页面脚本异常且不保存卡号。
+- .runtime/compose-browser-result.json 保存本次容器完整流程结果；暂时诊断启动配置未进入交付配置。
+- Compose 串行补充验收通过：16 个桌面/手机页面；独立浏览器物业回复同步；英语时段/电梯/装卸字段；买家 System message 与管理员 Agent 名称隔离；管理员无待结算状态。
+- 已保留 Compose uploads 卷并关闭其容器，为 kind 释放 5623 端口；切换前订单摘要保存在 .runtime/before-kind-orders.json。
+- kind/Kubernetes 已部署：后端与前端 Pod 均 1/1 Ready，uploads PVC Bound（2 GiB），5623 NodePort 经 loopback 暴露。
+- Pod 内 Cloud SQL TLS 和真实 campus-qwen 文本调用通过。Compose → kind 切换后 19 条订单 ID、状态、结算时间一致。
+- 图片迁移脚本修复卷根目录权限问题：归档仅包含源目录下的条目，不再归档根目录本身；保留原图。kind 媒体 HTTP 内容与原文件一致。
+- kind 入口实际加载的 16 个桌面/手机路由与跨物业/买家/管理员导航全部通过。
+- kind pricing Agent 图调用及 command receipt 写入通过；随后替换 backend Pod，19 条订单及上传图片保持一致。
+- 最终源码 82 个文件对实际模型密钥/数据库密码扫描，零命中。安装/启动/复制脚本语法检查通过，当前 kind 的双击容器启动路径实际执行通过。
