@@ -112,3 +112,20 @@ node frontend/tests/api-flow.mjs
 kind 云模式读取 `.env.cloud`；本地模式运行 `./scripts/deploy-kind.ps1 -DatabaseMode Local -EnvFile .env.local-backup`。Compose 默认读取 `.env`，可以通过 APP_ENV_FILE 改用 `.env.cloud`。
 
 图片仍保存在演示电脑 `.runtime/uploads`，云数据库保存元数据。换电脑/容器前需要复制图片到对应 uploads volume，不能仅迁移数据库。当前部署仅用于本机 MVP 演示。
+
+容器启动后，复制现有图片（保留本地原件及已有卷，不清空数据）：
+
+```powershell
+./scripts/copy-uploads.ps1 -Target Compose
+# 或在 kind 部署完成后：
+./scripts/copy-uploads.ps1 -Target Kind
+```
+
+浏览器检查可直接使用当前部署入口，不依赖 Windows 上的 API 进程：
+
+```powershell
+$env:BASE_URL='http://127.0.0.1:5623/'
+node frontend/tests/api-navigation.mjs
+node frontend/tests/api-smoke.mjs
+node frontend/tests/api-flow.mjs
+```
