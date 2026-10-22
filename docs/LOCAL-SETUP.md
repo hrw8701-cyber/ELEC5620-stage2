@@ -20,5 +20,3 @@ $env:PATH='D:\tools\bin;D:\tools\Docker\resources\bin;'+$env:PATH
 ```
 
 最终使用 GitHub.com 的 hrw8701-cyber 账号，经个人 fork 向团队仓库 muzi-haoming/ELEC5620-stage2 提交 PR #1。origin 指向团队仓库，personal 指向 fork。该账号只有团队读取权限，合并需有写权限的团队成员完成。学校 github.sydney.edu.au/hwan9982/ELEC5620-stage2 仅保留私有备份，其 PR 已关闭，后续不再向学校副本推送。
-
-
