@@ -43,4 +43,6 @@ node frontend/tests/api-flow.mjs
 
 本机应用已接入 Google Cloud SQL；Docker/kind 仍需安装并实际验证。原 stage2/react-frontend 保留，旧浏览器数据不自动导入或覆盖。
 
-人工验收入口与已知边界见 [最终交付说明](docs/FINAL-HANDOFF.md)。
+演示入口与已知边界见 [最终交付说明](docs/FINAL-HANDOFF.md)。
+
+照片由 ListingAgent 自动审核，无人工照片验收前置条件；所有人工参与点见 [职责核查](docs/HUMAN-INVOLVEMENT.md)。

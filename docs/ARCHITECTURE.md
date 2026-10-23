@@ -78,3 +78,7 @@ PostgresSaver 使用独立 checkpoint 表；每个冲突记录 graphThread，重
 原 `stage2/react-frontend` 未改动，新实现位于此仓库 `frontend/`。样式、路由、中英切换和表单保留；将状态操作替换为异步 API。报价回退清空、BPAY、上传方向、物业回传字段翻译、三端状态映射沿用原版本。
 
 原浏览器 localStorage 与 IndexedDB 不自动导入共享数据库，避免无校验导入。新实现使用明确的 seed 数据；原演示数据仍在原浏览器/端口中。
+
+## 照片审核与人工参与边界（2026-10-23）
+
+ListingAgent 负责真实上传照片的自动审核；审核通过即上架，不经过 HumanReview 或管理员批准。审核失败由卖家修改资料后重新提交，模型调用失败也不转交人工审批。HumanReview 仅用于当前 conflict 政策缺口分支，不属于 listing 路由。测试覆盖不足不能被写成业务人工审核要求。其他人工操作见 [人工参与核查](HUMAN-INVOLVEMENT.md)。
