@@ -113,7 +113,7 @@ def permissions(actor, operation, payload):
 
 
 def validate_payload(op, p):
-    required = {'listing': {'form': dict}, 'pricing': {'category': str}, 'recommend': {'profile': dict},
+    required = {'listing': {'form': dict}, 'pricing': {'form': dict}, 'recommend': {'profile': dict},
                 'quote': {'itemId': str, 'delivery': dict}, 'purchase': {'quoteId': str, 'method': str},
                 'advance': {'orderId': str, 'action': str}, 'property': {'token': str, 'reply': dict},
                 'policy': {'caseId': str, 'reason': str}, 'conflict': {'orderId': str}, 'tick': {'days': (int, float)}}
@@ -136,7 +136,7 @@ def result_view(result, actor):
 
 
 def graph_context(s, operation, payload):
-    return {'now': s['now'], 'comparables': [{k: i[k] for k in ['id', 'category', 'price']} for i in s['items'] if i['status'] == 'published'],
+    return {'now': s['now'],
             'hasPolicy': any(p['id'] == 'P-EXTRA' and p['active'] for p in s['policies'])}
 
 
@@ -229,7 +229,7 @@ def action(command: Action, request: Request):
     # Reject payment details BEFORE creating graph checkpoints or audit records.
     if op == 'purchase' and set(p) - {'quoteId', 'method'}:
         raise HTTPException(422, 'Payment form fields must not be transmitted.')
-    if op == 'listing':
+    if op in ['listing','pricing']:
         ensure_media(p.get('form', {}))
     fingerprint = sha256(json.dumps([actor, op, p], sort_keys=True).encode()).hexdigest()
     with db.connect() as conn:

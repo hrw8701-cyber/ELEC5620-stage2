@@ -1,5 +1,19 @@
 // Values entered by users remain in their original language; fixed product copy is bilingual.
 export const translations=Object.fromEntries(`
+照片或家具资料审核未通过，请检查照片内容、类别和必填信息。|Photo or furniture validation failed. Check photo content, category and required details.
+照片中的家具与所选类别不一致。|The furniture in the photos does not match the selected category.
+获取建议售价|Get suggested price
+正在查询同类二手商品…|Searching comparable used furniture…
+请先填写家具名称、类别、材质、成色、年限和尺寸。|Please fill in the furniture name, category, material, condition, age and dimensions first.
+外部比价服务尚未配置，暂时无法获取建议售价。|External pricing is not configured. A suggested price is currently unavailable.
+未找到足够的可比二手商品，暂不提供建议售价。|Not enough comparable used items were found to suggest a price.
+外部商品查询失败，请稍后重试。|External search failed. Please try again later.
+商品比对暂时不可用，请稍后重试。|Item comparison is unavailable. Please try again later.
+依据当前二手挂牌价；配送条款以来源页面为准。|Based on current used-item asking prices; delivery terms vary by source.
+查询时间|Retrieved at
+查看比价依据|View comparison evidence
+未提供的参数|Missing attributes
+家具资料已修改，可重新获取建议售价。|Furniture details have changed. Request a new suggested price.
 全部|All
 发现适合你的那一件。|Find the piece that feels like you.
 好家具，值得拥有下一段故事。|Good furniture deserves another story.

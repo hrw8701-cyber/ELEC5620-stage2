@@ -125,7 +125,7 @@ def test_listing_reject_edit_pricing_and_matching(client):
     result = ok(call(client, 'recommend', {'profile': db.seed()['profile']}))
     assert len(result) <= 3
     assert all(i['category'] == '沙发' and i['price'] <= 600 for i in result)
-    assert ok(call(client, 'pricing', {'category': '不存在'}, 'seller'))['suggested'] is None
+    assert ok(call(client, 'pricing', {'form': {'category': '不存在'}}, 'seller'))['suggested'] is None
 
 
 def test_graph_human_checkpoint_survives_reconstruction(client):
@@ -226,3 +226,26 @@ def test_fractional_service_fee_keeps_ledger_balanced(client):
     assert ledger['seller_cents'] == 1200
     assert ledger['platform_cents'] == 25 + 750
     assert ledger['seller_cents'] + ledger['carrier_cents'] + ledger['platform_cents'] == 8725
+
+
+@pytest.mark.parametrize('real_furniture,category_match', [(False,False),(True,False)])
+def test_pricing_requires_furniture_and_matching_category(client,monkeypatch,real_furniture,category_match):
+    from app.agents import VisualAssessment
+    image=io.BytesIO();Image.new('RGB',(32,32),'blue').save(image,'JPEG')
+    uploaded=client.post('/api/media',files={'file':('test.jpg',image.getvalue(),'image/jpeg')},headers={'X-Demo-Role':'seller'}).json()
+    form=deepcopy(db.seed()['items'][0])
+    form['photos']={k:uploaded for k in ['front','top','side']};form['photos']['details']=[]
+    monkeypatch.setattr(config,'MODEL_MODE','live')
+    monkeypatch.setattr('app.agents.structured_model',lambda *a,**kw:VisualAssessment(approved=True,depicts_real_furniture=real_furniture,category_match=category_match,directions_match=True,description_match=True,clear_and_relevant=True,reasons=['Not furniture or category mismatch']))
+    monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Rejected photos must never reach pricing'))
+    result=ok(call(client,'pricing',{'form':form},'seller'))
+    assert result['suggested'] is None and result['status']=='photo_rejected'
+    assert ok(call(client,'listing',{'form':form},'seller'))['status']=='rejected'
+
+
+def test_demo_category_mismatch_blocks_pricing(client,monkeypatch):
+    form=deepcopy(db.seed()['items'][0]);form['category']='床'
+    form['photos']={k:{'ref':'/images/sofa.jpg'} for k in ['front','top','side']};form['photos']['details']=[]
+    monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Wrong category reached pricing'))
+    result=ok(call(client,'pricing',{'form':form},'seller'))
+    assert result['status']=='photo_rejected' and result['suggested'] is None
