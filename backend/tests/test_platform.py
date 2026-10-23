@@ -53,7 +53,7 @@ def test_full_flow_atomic_settlement_and_role_views(client):
         ledger = conn.execute('SELECT * FROM settlements WHERE order_id=%s', (o['id'],)).fetchall()
         assert len(ledger) == 1
         row = ledger[0]
-        assert row['seller_cents'] == 37240 and row['carrier_cents'] == 6750
+        assert row['seller_cents'] == 37240 and row['carrier_cents'] == d.cents(o['deliveryFee'])-d.cents(o['deliveryFee']*.1)
         assert row['seller_cents'] + row['carrier_cents'] + row['platform_cents'] == d.cents(o['total'])
     admin = client.get('/api/state', headers={'X-Demo-Role': 'manager'}).json()
     assert any(e['agent'] == 'PaymentAgent' for e in d.find(admin['orders'], o['id'])['events'])
@@ -169,7 +169,7 @@ def test_photo_upload_and_unavailable_vision(client, monkeypatch):
     monkeypatch.setattr('app.agents.structured_model', lambda *a: (_ for _ in ()).throw(RuntimeError('Unavailable')))
     rejected = ok(call(client, 'listing', {'form': form}, 'seller'))
     assert rejected['status'] == 'rejected'
-    assert '图片审核暂时无法完成' in rejected['errors']['front']
+    assert rejected['errors']['front']=='上传图片不符合平台政策'
 
 
 def test_invalid_payload_and_roles(client):
@@ -182,7 +182,9 @@ def test_failed_purchase_rolls_back_and_concurrent_acceptance_settles_once(clien
     o = order(client)
     before = db.snapshot()
     assert call(client, 'advance', {'orderId': o['id'], 'action': 'confirm'}).status_code == 409
-    assert db.snapshot() == before
+    after=db.snapshot()
+    assert {k:v for k,v in after.items() if k!='now'} == {k:v for k,v in before.items() if k!='now'}
+    assert after['now']>=before['now']
     delivered(client, o)
     with ThreadPoolExecutor(2) as pool:
         results = list(pool.map(lambda _: call(client, 'advance', {'orderId': o['id'], 'action': 'confirm'}), range(2)))
@@ -224,8 +226,8 @@ def test_fractional_service_fee_keeps_ledger_balanced(client):
     with db.connect() as conn:
         ledger = conn.execute('SELECT * FROM settlements WHERE order_id=%s', (o['id'],)).fetchone()
     assert ledger['seller_cents'] == 1200
-    assert ledger['platform_cents'] == 25 + 750
-    assert ledger['seller_cents'] + ledger['carrier_cents'] + ledger['platform_cents'] == 8725
+    assert ledger['platform_cents'] == 25 + d.cents(o['deliveryFee']*.1)
+    assert ledger['seller_cents'] + ledger['carrier_cents'] + ledger['platform_cents'] == d.cents(o['total'])
 
 
 @pytest.mark.parametrize('real_furniture,category_match', [(False,False),(True,False)])
@@ -240,7 +242,14 @@ def test_pricing_requires_furniture_and_matching_category(client,monkeypatch,rea
     monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Rejected photos must never reach pricing'))
     result=ok(call(client,'pricing',{'form':form},'seller'))
     assert result['suggested'] is None and result['status']=='photo_rejected'
-    assert ok(call(client,'listing',{'form':form},'seller'))['status']=='rejected'
+    assert '上传图片不符合平台政策' in result['errors'].values()
+    rejected=ok(call(client,'listing',{'form':form},'seller'))
+    assert rejected['status']=='rejected'
+    assert '上传图片不符合平台政策' in rejected['screenReason']
+    admin=client.get('/api/state',headers={'X-Demo-Role':'manager'}).json()
+    internal=next(i for i in admin['items'] if i['id']==rejected['id'])
+    assert internal['assessment']
+    assert internal['errors']!=rejected['errors']
 
 
 def test_demo_category_mismatch_blocks_pricing(client,monkeypatch):
@@ -249,3 +258,23 @@ def test_demo_category_mismatch_blocks_pricing(client,monkeypatch):
     monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Wrong category reached pricing'))
     result=ok(call(client,'pricing',{'form':form},'seller'))
     assert result['status']=='photo_rejected' and result['suggested'] is None
+
+
+def test_running_clock_and_quote_expiry_without_tick(client,monkeypatch):
+    from app import demo_clock
+    before=client.get('/api/state').json();anchor=before['demoClock']['anchor']
+    monkeypatch.setattr(demo_clock,'wall_ms',lambda:anchor+16000)
+    after=client.get('/api/state').json()
+    assert after['now']>=before['now']+15000
+    assert after['demoClock']['runId']==before['demoClock']['runId']
+    q=ok(call(client,'quote',{'itemId':'F-101','delivery':DELIVERY}))
+    monkeypatch.setattr(demo_clock,'wall_ms',lambda:anchor+1000000)
+    assert call(client,'purchase',{'quoteId':q['id'],'method':'BPAY'}).status_code==409
+
+def test_delivery_preview_matches_fixed_quote(client):
+    near=client.post('/api/delivery-options',headers={'X-Demo-Role':'buyer'},json={'itemId':'F-101','address':'25 Demo Street, Glebe NSW 2037'}).json()
+    far=client.post('/api/delivery-options',headers={'X-Demo-Role':'buyer'},json={'itemId':'F-101','address':'20 High Street, Penrith NSW 2750'}).json()
+    assert near[0]['price']!=far[0]['price']
+    q=ok(call(client,'quote',{'itemId':'F-101','delivery':dict(DELIVERY,address='20 High Street, Penrith NSW 2750')}))
+    assert q['deliveryFee']==far[0]['price']
+    assert far[1]['price']>far[0]['price']

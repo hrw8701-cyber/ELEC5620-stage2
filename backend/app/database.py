@@ -9,6 +9,7 @@ from psycopg_pool import ConnectionPool
 from psycopg.types.json import Jsonb
 from . import config
 from .domain import cents
+from . import demo_clock
 
 COLLECTIONS = {'items': 'listings', 'quotes': 'quotes', 'orders': 'orders', 'policies': 'policies', 'exceptions': 'cases', 'audit': 'audit_events'}
 
@@ -42,7 +43,9 @@ def connect():
 
 
 def seed():
-    return json.loads(Path(__file__).with_name('seed.json').read_text(encoding='utf-8'))
+    state=json.loads(Path(__file__).with_name('seed.json').read_text(encoding='utf-8'))
+    demo_clock.start(state)
+    return state
 
 
 def setup():
@@ -50,9 +53,15 @@ def setup():
         # One startup migration/seed writer even with multiple API processes.
         conn.execute('SELECT pg_advisory_xact_lock(5620001)')
         conn.execute((config.ROOT / 'migrations/001_initial.sql').read_text(encoding='utf-8'))
+        conn.execute((config.ROOT / 'migrations/002_market.sql').read_text(encoding='utf-8'))
         if not conn.execute('SELECT 1 FROM app_meta WHERE id=1').fetchone():
             conn.execute('INSERT INTO app_meta VALUES (1,%s)', (Jsonb({}),))
             save(conn, seed())
+        else:
+            row=conn.execute('SELECT payload FROM app_meta WHERE id=1').fetchone()['payload']
+            if not row.get('demoClock'):
+                demo_clock.start(row)
+                conn.execute('UPDATE app_meta SET payload=%s WHERE id=1',(Jsonb(row),))
 
 
 def read(conn, lock=False):
@@ -65,6 +74,7 @@ def read(conn, lock=False):
         grouped[record['collection']][record['id']] = record['payload']
     for key, values in grouped.items():
         s[key] = [values[k] for k in ordering.get(key, values.keys()) if k in values]
+    demo_clock.advance(s)
     return s
 
 

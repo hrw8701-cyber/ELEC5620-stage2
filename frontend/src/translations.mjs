@@ -14,6 +14,22 @@ export const translations=Object.fromEntries(`
 查看比价依据|View comparison evidence
 未提供的参数|Missing attributes
 家具资料已修改，可重新获取建议售价。|Furniture details have changed. Request a new suggested price.
+上传图片不符合平台政策|Uploaded images do not comply with platform policy
+正在审核并计算建议价…|Reviewing photos and calculating…
+依据已采集的二手商品资料估价；配送条款以来源页面为准。|Estimated from collected used-item references; delivery terms vary by source.
+参考资料采集时间|Reference data collected
+参数调整后参考价|Attribute-adjusted reference price
+材质匹配|Matching material
+已比较成色|Condition compared
+已比较年限|Age compared
+同类二手家具|Comparable used furniture
+年限|Age
+宽度|Width
+深度|Depth
+高度|Height
+配送报价暂不可用，请重新填写地址后重试。|Delivery estimate unavailable. Re-enter the address to retry.
+配送费按取送地址分区估算。|Delivery is estimated from pickup and drop-off address zones.
+填写送货地址后显示配送费。|Enter the delivery address to see delivery prices.
 全部|All
 发现适合你的那一件。|Find the piece that feels like you.
 好家具，值得拥有下一段故事。|Good furniture deserves another story.

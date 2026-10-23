@@ -16,7 +16,7 @@ from pillow_heif import register_heif_opener
 from psycopg.types.json import Jsonb
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.types import Command
-from . import config, database as db, domain as d
+from . import config, database as db, domain as d, demo_clock
 from .agents import build_graph, ROUTES
 
 register_heif_opener()
@@ -64,6 +64,17 @@ def role(request):
     return name
 
 
+
+PHOTO_POLICY_MESSAGE='上传图片不符合平台政策'
+def public_photo_errors(value):
+    errors=value.get('errors',{})
+    changed=False
+    for key,text in list(errors.items()):
+        if key in {'front','top','side','details'} or (key=='category' and str(text).startswith('照片')):
+            errors[key]=PHOTO_POLICY_MESSAGE;changed=True
+    if changed and 'screenReason' in value:value['screenReason']='；'.join(dict.fromkeys(errors.values()))
+    return value
+
 def visible(s, actor, token=''):
     view = deepcopy(s)
     if actor == 'property':
@@ -82,6 +93,7 @@ def visible(s, actor, token=''):
                 event['agent'] = '系统消息'
             o.pop('graphThread', None)
         for i in view['items']:
+            public_photo_errors(i)
             i.pop('assessment', None)
     view.pop('policyArchive', None)
     view.pop('legacyArchive', None)
@@ -128,6 +140,7 @@ def result_view(result, actor):
     if actor == 'property':
         return True
     if actor != 'manager' and isinstance(result, dict):
+        public_photo_errors(result)
         result.pop('assessment', None)
         result.pop('graphThread', None)
         for event in result.get('events', []):
@@ -186,7 +199,7 @@ def dispatch(conn, s, operation, p, proposal, thread_id):
         value = d.number(p.get('days'))
         if not math.isfinite(value) or not 0 < value <= 36500:
             raise d.BusinessError('无效时间增量。')
-        s['now'] += round(value * d.DAY)
+        demo_clock.jump(s, round(value * d.DAY))
         d.audit(s, 'DemoClock', f'演示时钟推进 {value:g} 天')
         return True
     if operation == 'reset':
@@ -334,3 +347,13 @@ def media(filename: str):
     if not path.is_file():
         raise HTTPException(404)
     return FileResponse(path, media_type='image/jpeg')
+
+
+@app.post('/api/delivery-options')
+def delivery_options(request: Request, payload: dict):
+    if role(request)!='buyer':raise HTTPException(403,'Buyer only')
+    address=payload.get('address')
+    if not isinstance(address,str) or not 5<=len(address.strip())<=250:raise HTTPException(422,'Please enter a delivery address')
+    state=db.snapshot();item=d.find(state['items'],payload.get('itemId'))
+    if not item or item['status']!='published':raise HTTPException(409,'Item unavailable')
+    return [{'id':key,'name':value[0],**d.delivery_price(item['pickup'],address,key)} for key,value in d.PROVIDERS.items()]

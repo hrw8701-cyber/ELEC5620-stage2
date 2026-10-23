@@ -85,7 +85,7 @@ export function Submit() {
       setPricedInput(JSON.stringify(input));
     } finally { if(stamp===requestEpoch.current)setPricingBusy(false); }
   }
-  const pricingMessages={photo_rejected:'照片或家具资料审核未通过，请检查照片内容、类别和必填信息。',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'未找到足够的可比二手商品，暂不提供建议售价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
+  const pricingMessages={photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'未找到足够的可比二手商品，暂不提供建议售价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
   if (existing && existing.status !== 'rejected') return <Empty text={_tr("此家具不能修改")} to={'/seller/listings/' + listingId} />;
   async function submit(e) {
     e.preventDefault();
@@ -121,9 +121,9 @@ export function Submit() {
             type: 'date',
             min: day(s.now)
           }))}<Field label={_tr("通行条件 *")}><textarea aria-invalid={!!errors.access} maxLength={500} placeholder={_tr("楼层、电梯 / 楼梯、门宽、装卸区")} value={f.access} onChange={e => set('access', e.target.value)} /></Field>{_tr(error('access'))}<label className="check"><input type="checkbox" checked={f.ownership} onChange={e => set('ownership', e.target.checked)} />{_tr("\u6211\u58F0\u660E\u62E5\u6709\u8BE5\u5BB6\u5177\u5E76\u6709\u6743\u51FA\u552E\u3002")}</label>{_tr(error('ownership'))}</Panel><Panel title={_tr("确认售价")}><div className="suggestion" aria-live="polite">{_tr("参考价格")}<strong data-testid="suggested-price">{suggested ? money(suggested) : '—'}</strong>
-            <button type="button" className="button" disabled={pricingBusy||busy} onClick={getSuggestion}>{_tr(pricingBusy?'正在查询同类二手商品…':'获取建议售价')}</button>
-            {estimate?.status!=='ready' && estimate && <p>{_tr(pricingMessages[estimate.status]||pricingMessages.provider_unavailable)}{estimate.errors && Object.entries(estimate.errors).map(([key,value])=><small style={{display:'block'}} key={key}>{_tr(value)}</small>)}</p>}
-            {suggested && <><button type="button" className="text-button" disabled={pricingBusy||pricingChanged} onClick={()=>set('price',suggested)}>{_tr('使用参考价格')}</button><p>{_tr('依据当前二手挂牌价；配送条款以来源页面为准。')}</p><small>{_tr('查询时间')}：{estimate.retrievedAt}</small><details><summary>{_tr('查看比价依据')}</summary>{estimate.evidence?.map(row=><div key={row.id}><a href={row.url} target="_blank" rel="noopener noreferrer">{row.title}</a><p>{money(row.price)} AUD · {_tr('匹配度')} {row.matchScore}%</p><p>{row.reason}</p>{row.unknowns?.length>0&&<p>{_tr('未提供的参数')}：{row.unknowns.join(', ')}</p>}</div>)}</details></>}
+            <button type="button" className="button pricing-request" data-testid="get-suggested-price" disabled={pricingBusy||busy} onClick={getSuggestion}>{_tr(pricingBusy?'正在审核并计算建议价…':'获取建议售价')}</button>
+            {estimate?.status!=='ready' && estimate && <p>{_tr(pricingMessages[estimate.status]||pricingMessages.provider_unavailable)}{estimate.status!=='photo_rejected' && estimate.errors && Object.entries(estimate.errors).map(([key,value])=><small style={{display:'block'}} key={key}>{_tr(value)}</small>)}</p>}
+            {suggested && <><button type="button" className="text-button" disabled={pricingBusy||pricingChanged} onClick={()=>set('price',suggested)}>{_tr('使用参考价格')}</button><p>{_tr('依据已采集的二手商品资料估价；配送条款以来源页面为准。')}</p><small>{_tr('参考资料采集时间')}：{estimate.retrievedAt}</small><details><summary>{_tr('查看比价依据')}</summary>{estimate.evidence?.map(row=><div key={row.id}><a href={row.url} target="_blank" rel="noopener noreferrer">{row.title}</a><p>{money(row.price)} AUD · {_tr('匹配度')} {row.matchScore}%</p><p>{_tr(row.reason)}</p>{row.adjustmentFactor!==undefined&&<small>{_tr('参数调整后参考价')}：{money(row.adjustedPrice)}</small>}{row.unknowns?.length>0&&<p>{_tr('未提供的参数')}：{row.unknowns.map(x=>_tr(x)).join(', ')}</p>}</div>)}</details></>}
             {pricingChanged&&<p>{_tr('家具资料已修改，可重新获取建议售价。')}</p>}
           </div>{_tr(textField('price', '商品售价 AUD', {
             type: 'number',

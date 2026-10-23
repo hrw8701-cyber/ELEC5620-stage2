@@ -59,7 +59,7 @@ export function PhotoUpload({
         [key]: key === 'details' ? [...photos.details, ...stored] : stored[0]
       });
     } catch (e) {
-      setError(e.message);
+      setError('上传图片不符合平台政策');
     } finally {
       setBusy('');
       onBusy?.(false);

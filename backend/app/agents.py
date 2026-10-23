@@ -154,9 +154,9 @@ def specialist(name):
                 if not assessment or assessment.get('errors'):
                     result['pricing']=unavailable('photo_rejected', errors=(assessment or {}).get('errors',{}))
                 else:
-                    result['pricing'] = market_price(form, lambda schema, prompt, content: structured_model(schema, prompt, content, max_tokens=3072, timeout=60))
+                    result['pricing'] = market_price(form)
                 decision['mode'] = result['pricing']['status']
-            decision['summary'] = '仅主动请求时查询外部二手商品；保留比对依据，不自动覆盖卖家售价或买家总价。'
+            decision['summary'] = '仅主动请求时比较数据库中的公开二手商品参考资料；保留依据，不自动覆盖卖家售价或买家总价。'
         elif name == 'MatchingAgent':
             text = p['profile'].get('preferences', '')
             parsed = parse_preference_keywords.invoke({'text': text})

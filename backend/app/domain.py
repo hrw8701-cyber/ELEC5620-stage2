@@ -6,6 +6,7 @@ import math
 import re
 import secrets
 from zoneinfo import ZoneInfo
+from .delivery_pricing import delivery_price
 
 DAY = 86400000
 SYDNEY = ZoneInfo('Australia/Sydney')
@@ -174,9 +175,11 @@ def create_quote(s, item_id, d):
             raise BusinessError('需要物业确认时，请填写该端物业邮箱。')
     if d.get('provider') not in PROVIDERS:
         raise BusinessError('请选择配送商。')
-    provider, fee, days = PROVIDERS[d['provider']]
+    provider, _, days = PROVIDERS[d['provider']]
+    delivery_pricing=delivery_price(i['pickup'],d['address'],d['provider'])
+    fee=delivery_pricing['price']
     q = dict(id=uid('Q'), itemId=item_id, itemPrice=i['price'], deliveryFee=fee,
-             total=(cents(i['price']) + cents(fee)) / 100, provider=provider,
+             total=(cents(i['price']) + cents(fee)) / 100, provider=provider, deliveryPricing=delivery_pricing,
              expected=business_date(s['now'], days), delivery=deepcopy(d), created=s['now'],
              expires=s['now'] + 900000, paymentKey=uid('PAY'), biller='009921',
              reference=str(secrets.randbelow(9000000000) + 1000000000), consumed=False)
