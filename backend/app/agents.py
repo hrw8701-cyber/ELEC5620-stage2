@@ -152,7 +152,8 @@ def specialist(name):
                 from .market_pricing import market_price, unavailable
                 assessment=result.get('assessment')
                 if not assessment or assessment.get('errors'):
-                    result['pricing']=unavailable('photo_rejected', errors=(assessment or {}).get('errors',{}))
+                    from .review_messages import review_status
+                    result['pricing']=unavailable(review_status(assessment or {}), errors=(assessment or {}).get('errors',{}), assessment=assessment)
                 else:
                     result['pricing'] = market_price(form)
                 decision['mode'] = result['pricing']['status']

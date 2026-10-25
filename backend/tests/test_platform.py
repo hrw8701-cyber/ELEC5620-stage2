@@ -169,7 +169,8 @@ def test_photo_upload_and_unavailable_vision(client, monkeypatch):
     monkeypatch.setattr('app.agents.structured_model', lambda *a: (_ for _ in ()).throw(RuntimeError('Unavailable')))
     rejected = ok(call(client, 'listing', {'form': form}, 'seller'))
     assert rejected['status'] == 'rejected'
-    assert rejected['errors']['front']=='上传图片不符合平台政策'
+    assert rejected['reviewStatus']=='review_unavailable'
+    assert '尚未判定' in rejected['errors']['front']
 
 
 def test_invalid_payload_and_roles(client):

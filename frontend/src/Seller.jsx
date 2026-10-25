@@ -58,6 +58,7 @@ export function Submit() {
   }));
   const [recordId, setRecordId] = useState(listingId);
   const [errors, setErrors] = useState(existing?.errors || {});
+  const [reviewStatus,setReviewStatus]=useState(existing?.reviewStatus||'');
   const [busy, setBusy] = useState(false);
   useEffect(()=>{setF({...defaults,moveout:day(s.now),...existing,photos:existing?.photos||structuredClone(defaults.photos)});setRecordId(listingId);setErrors(existing?.errors||{});},[listingId]);
   const set = (k, v) => setF(x => ({
@@ -85,7 +86,7 @@ export function Submit() {
       setPricedInput(JSON.stringify(input));
     } finally { if(stamp===requestEpoch.current)setPricingBusy(false); }
   }
-  const pricingMessages={photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'未找到足够的可比二手商品，暂不提供建议售价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
+  const pricingMessages={review_busy:'图片审核服务繁忙，请稍后重试；尚未判定图片是否合格。',review_timeout:'图片审核超时，请稍后重试；尚未判定图片是否合格。',review_unavailable:'图片审核服务暂不可用，请稍后重试；尚未判定图片是否合格。',input_invalid:'家具资料不完整或格式不正确，请检查以下字段。',photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'未找到足够的可比二手商品，暂不提供建议售价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
   if (existing && existing.status !== 'rejected') return <Empty text={_tr("此家具不能修改")} to={'/seller/listings/' + listingId} />;
   async function submit(e) {
     e.preventDefault();
@@ -95,11 +96,11 @@ export function Submit() {
     setBusy(false);
     if (!result) return;
     setRecordId(result.id);
-    setErrors(result.errors);
+    setErrors(result.errors);setReviewStatus(result.reviewStatus||'');
     if (result.status === 'published') {
       notify('家具已上架');
       nav('/seller/listings/' + result.id);
-    } else notify('资料已保存在拒绝上架中，请修改标记字段后重新提交。');
+    } else notify(result.reviewStatus?.startsWith('review_')?'审核暂未完成，资料已保留，请稍后重新提交。':'资料已保存在拒绝上架中，请修改标记字段后重新提交。');
   }
   const error = k => errors[k] ? <small className="field-error" role="alert">{_tr(errors[k])}</small> : null;
   const textField = (key, label, props = {}) => <div><Field label={_tr(label + ' *')} value={f[key]} onChange={e => set(key, e.target.value)} aria-invalid={!!errors[key]} {...props} />{_tr(error(key))}</div>;
@@ -122,7 +123,7 @@ export function Submit() {
             min: day(s.now)
           }))}<Field label={_tr("通行条件 *")}><textarea aria-invalid={!!errors.access} maxLength={500} placeholder={_tr("楼层、电梯 / 楼梯、门宽、装卸区")} value={f.access} onChange={e => set('access', e.target.value)} /></Field>{_tr(error('access'))}<label className="check"><input type="checkbox" checked={f.ownership} onChange={e => set('ownership', e.target.checked)} />{_tr("\u6211\u58F0\u660E\u62E5\u6709\u8BE5\u5BB6\u5177\u5E76\u6709\u6743\u51FA\u552E\u3002")}</label>{_tr(error('ownership'))}</Panel><Panel title={_tr("确认售价")}><div className="suggestion" aria-live="polite">{_tr("参考价格")}<strong data-testid="suggested-price">{suggested ? money(suggested) : '—'}</strong>
             <button type="button" className="button pricing-request" data-testid="get-suggested-price" disabled={pricingBusy||busy} onClick={getSuggestion}>{_tr(pricingBusy?'正在审核并计算建议价…':'获取建议售价')}</button>
-            {estimate?.status!=='ready' && estimate && <p>{_tr(pricingMessages[estimate.status]||pricingMessages.provider_unavailable)}{estimate.status!=='photo_rejected' && estimate.errors && Object.entries(estimate.errors).map(([key,value])=><small style={{display:'block'}} key={key}>{_tr(value)}</small>)}</p>}
+            {estimate?.status!=='ready' && estimate && <p>{_tr(pricingMessages[estimate.status]||pricingMessages.provider_unavailable)}{estimate.status!=='photo_rejected' && estimate.errors && Object.entries(estimate.errors).map(([key,value])=><small style={{display:'block'}} key={key}>{_tr(({name:'家具名称',material:'材质',category:'家具类别',age:'近似年龄（年）',width:'宽度 cm',depth:'深度 cm',height:'高度 cm',front:'正面照片',top:'俯视照片',side:'侧面照片',details:'其他细节照片'})[key]||key)}：{_tr(value)}</small>)}</p>}
             {suggested && <><button type="button" className="text-button" disabled={pricingBusy||pricingChanged} onClick={()=>set('price',suggested)}>{_tr('使用参考价格')}</button><p>{_tr('依据已采集的二手商品资料估价；配送条款以来源页面为准。')}</p><small>{_tr('参考资料采集时间')}：{estimate.retrievedAt}</small><details><summary>{_tr('查看比价依据')}</summary>{estimate.evidence?.map(row=><div key={row.id}><a href={row.url} target="_blank" rel="noopener noreferrer">{row.title}</a><p>{money(row.price)} AUD · {_tr('匹配度')} {row.matchScore}%</p><p>{_tr(row.reason)}</p>{row.adjustmentFactor!==undefined&&<small>{_tr('参数调整后参考价')}：{money(row.adjustedPrice)}</small>}{row.unknowns?.length>0&&<p>{_tr('未提供的参数')}：{row.unknowns.map(x=>_tr(x)).join(', ')}</p>}</div>)}</details></>}
             {pricingChanged&&<p>{_tr('家具资料已修改，可重新获取建议售价。')}</p>}
           </div>{_tr(textField('price', '商品售价 AUD', {
@@ -130,7 +131,7 @@ export function Submit() {
             min: '.01',
             max: '100000',
             step: '.01'
-          }))}<Breakdown price={Number(f.price) || 0} seller /><Button type="submit" disabled={busy||pricingBusy}>{_tr(busy ? '照片处理中…' : recordId ? '修改并重新提交' : '提交并上架')}</Button>{_tr(Object.keys(errors).length > 0 && <p className="field-error">{_tr("\u8BF7\u4FEE\u6539\u6807\u8BB0\u5B57\u6BB5\u540E\u91CD\u65B0\u63D0\u4EA4\u3002")}</p>)}</Panel></div></form></>;
+          }))}<Breakdown price={Number(f.price) || 0} seller /><Button type="submit" disabled={busy||pricingBusy}>{_tr(busy ? '照片处理中…' : recordId ? '修改并重新提交' : '提交并上架')}</Button>{_tr(Object.keys(errors).length > 0 && <p className="field-error">{_tr(reviewStatus.startsWith('review_')?'审核暂未完成，资料已保留，请稍后重新提交。':'请修改标记字段后重新提交。')}</p>)}</Panel></div></form></>;
 }
 export function ListingDetail() {
   const _tr = useLanguage();

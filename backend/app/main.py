@@ -67,13 +67,17 @@ def role(request):
 
 PHOTO_POLICY_MESSAGE='上传图片不符合平台政策'
 def public_photo_errors(value):
+    from .review_messages import review_status, MESSAGES
+    assessment=value.get('assessment') or {}
+    status=review_status(assessment) if assessment else value.get('status')
     errors=value.get('errors',{})
-    changed=False
+    if assessment:value['reviewStatus']=status
     for key,text in list(errors.items()):
         if key in {'front','top','side','details'} or (key=='category' and str(text).startswith('照片')):
-            errors[key]=PHOTO_POLICY_MESSAGE;changed=True
-    if changed and 'screenReason' in value:value['screenReason']='；'.join(dict.fromkeys(errors.values()))
+            if status in MESSAGES:errors[key]=MESSAGES[status]
+    if 'screenReason' in value and errors:value['screenReason']='；'.join(dict.fromkeys(errors.values()))
     return value
+
 
 def visible(s, actor, token=''):
     view = deepcopy(s)
