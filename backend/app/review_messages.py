@@ -1,4 +1,5 @@
 MESSAGES = {
+    'review_input_limit': '图片审核请求超过服务输入限制，尚未完成审核；请联系平台处理。',
     'photo_rejected': '上传图片不符合平台政策',
     'review_busy': '图片审核服务繁忙，请稍后重试；尚未判定图片是否合格。',
     'review_timeout': '图片审核超时，请稍后重试；尚未判定图片是否合格。',
@@ -8,6 +9,7 @@ MESSAGES = {
 def review_status(assessment):
     mode=assessment.get('mode','')
     if mode.startswith('model_unavailable:'):
+        if 'input_tokens_too_large' in mode:return 'review_input_limit'
         if 'HTTP429' in mode:return 'review_busy'
         if 'timeout' in mode.lower():return 'review_timeout'
         return 'review_unavailable'

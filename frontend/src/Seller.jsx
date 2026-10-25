@@ -86,7 +86,7 @@ export function Submit() {
       setPricedInput(JSON.stringify(input));
     } finally { if(stamp===requestEpoch.current)setPricingBusy(false); }
   }
-  const pricingMessages={review_busy:'图片审核服务繁忙，请稍后重试；尚未判定图片是否合格。',review_timeout:'图片审核超时，请稍后重试；尚未判定图片是否合格。',review_unavailable:'图片审核服务暂不可用，请稍后重试；尚未判定图片是否合格。',input_invalid:'家具资料不完整或格式不正确，请检查以下字段。',photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'未找到足够的可比二手商品，暂不提供建议售价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
+  const pricingMessages={review_input_limit:'图片审核请求超过服务输入限制，尚未完成审核；请联系平台处理。',review_busy:'图片审核服务繁忙，请稍后重试；尚未判定图片是否合格。',review_timeout:'图片审核超时，请稍后重试；尚未判定图片是否合格。',review_unavailable:'图片审核服务暂不可用，请稍后重试；尚未判定图片是否合格。',input_invalid:'家具资料不完整或格式不正确，请检查以下字段。',photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'未找到足够的可比二手商品，暂不提供建议售价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
   if (existing && existing.status !== 'rejected') return <Empty text={_tr("此家具不能修改")} to={'/seller/listings/' + listingId} />;
   async function submit(e) {
     e.preventDefault();

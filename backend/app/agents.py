@@ -68,9 +68,10 @@ def model_image(path):
     """Small inference copy only; never replace the stored original or UI preview."""
     with Image.open(path) as source:
         image = ImageOps.exif_transpose(source).convert('RGB')
-        image.thumbnail((config.MODEL_IMAGE_MAX_EDGE, config.MODEL_IMAGE_MAX_EDGE))
+        edge=min(config.MODEL_IMAGE_MAX_EDGE,256)
+        image.thumbnail((edge,edge))
         data = io.BytesIO()
-        image.save(data, 'JPEG', quality=75)
+        image.save(data, 'JPEG', quality=45, optimize=True)
     return {'type': 'image_url', 'image_url': {
         'url': 'data:image/jpeg;base64,' + base64.b64encode(data.getvalue()).decode(),
         'detail': 'low',
@@ -80,6 +81,11 @@ def model_image(path):
 def model_error_summary(error):
     # Record classification, never raw upstream response, credentials or request payload.
     status = getattr(error, 'status_code', None)
+    body=getattr(error,'body',None)
+    if isinstance(body,dict):
+        detail=body.get('error',body)
+        if isinstance(detail,dict) and detail.get('code')=='input_tokens_too_large':
+            return 'input_tokens_too_large'
     return type(error).__name__ + (f':HTTP{status}' if status else '')
 
 
