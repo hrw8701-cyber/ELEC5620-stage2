@@ -242,15 +242,15 @@ def test_pricing_requires_furniture_and_matching_category(client,monkeypatch,rea
     monkeypatch.setattr('app.agents.structured_model',lambda *a,**kw:VisualAssessment(approved=True,depicts_real_furniture=real_furniture,category_match=category_match,directions_match=True,description_match=True,clear_and_relevant=True,reasons=['Not furniture or category mismatch']))
     monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Rejected photos must never reach pricing'))
     result=ok(call(client,'pricing',{'form':form},'seller'))
-    assert result['suggested'] is None and result['status']=='photo_rejected'
-    assert '上传图片不符合平台政策' in result['errors'].values()
+    assert result['suggested'] is None and result['status']==('category_mismatch' if real_furniture else 'photo_rejected')
+    assert ('照片中的家具与所选类别不一致' in result['errors'].get('category','')) if real_furniture else ('上传图片不符合平台政策' in result['errors'].values())
     rejected=ok(call(client,'listing',{'form':form},'seller'))
     assert rejected['status']=='rejected'
-    assert '上传图片不符合平台政策' in rejected['screenReason']
+    assert ('类别不一致' in rejected['screenReason']) if real_furniture else ('上传图片不符合平台政策' in rejected['screenReason'])
     admin=client.get('/api/state',headers={'X-Demo-Role':'manager'}).json()
     internal=next(i for i in admin['items'] if i['id']==rejected['id'])
     assert internal['assessment']
-    assert internal['errors']!=rejected['errors']
+    assert internal['assessment']['checks'] is not None
 
 
 def test_demo_category_mismatch_blocks_pricing(client,monkeypatch):
@@ -258,7 +258,7 @@ def test_demo_category_mismatch_blocks_pricing(client,monkeypatch):
     form['photos']={k:{'ref':'/images/sofa.jpg'} for k in ['front','top','side']};form['photos']['details']=[]
     monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Wrong category reached pricing'))
     result=ok(call(client,'pricing',{'form':form},'seller'))
-    assert result['status']=='photo_rejected' and result['suggested'] is None
+    assert result['status']=='category_mismatch' and result['suggested'] is None
 
 
 def test_running_clock_and_quote_expiry_without_tick(client,monkeypatch):

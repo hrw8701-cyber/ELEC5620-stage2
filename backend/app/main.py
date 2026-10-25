@@ -67,14 +67,17 @@ def role(request):
 
 PHOTO_POLICY_MESSAGE='上传图片不符合平台政策'
 def public_photo_errors(value):
-    from .review_messages import review_status, MESSAGES
+    from .review_messages import review_status, MESSAGES, CATEGORY_MESSAGE
     assessment=value.get('assessment') or {}
     status=review_status(assessment) if assessment else value.get('status')
     errors=value.get('errors',{})
     if assessment:value['reviewStatus']=status
     for key,text in list(errors.items()):
-        if key in {'front','top','side','details'} or (key=='category' and str(text).startswith('照片')):
+        if key=='category' and str(text).startswith('照片'):
+            errors[key]=CATEGORY_MESSAGE
+        elif key in {'front','top','side','details'}:
             if status in MESSAGES:errors[key]=MESSAGES[status]
+            elif status=='category_mismatch':errors[key]=MESSAGES['photo_rejected']
     if 'screenReason' in value and errors:value['screenReason']='；'.join(dict.fromkeys(errors.values()))
     return value
 

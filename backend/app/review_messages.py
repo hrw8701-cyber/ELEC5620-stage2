@@ -1,3 +1,5 @@
+CATEGORY_MESSAGE = '照片中的家具与所选类别不一致，请检查家具类别；椅子、桌子、柜子请选择“其他”。'
+
 MESSAGES = {
     'review_input_limit': '图片审核请求超过服务输入限制，尚未完成审核；请联系平台处理。',
     'photo_rejected': '上传图片不符合平台政策',
@@ -15,4 +17,5 @@ def review_status(assessment):
         return 'review_unavailable'
     if not assessment.get('errors'):return 'ready'
     if mode=='input_validation':return 'input_invalid'
+    if str(assessment.get('errors',{}).get('category','')).startswith('照片'):return 'category_mismatch'
     return 'photo_rejected'
