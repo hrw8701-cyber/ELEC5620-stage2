@@ -11,5 +11,10 @@ try{
  good=true;await page.getByTestId('get-suggested-price').click();await page.getByText('为什么是这个价格',{exact:true}).waitFor();await page.getByText('参考样本较少',{exact:false}).waitFor();
  assert.match(await page.getByTestId('pricing-explanation').innerText(),/200/);
  await page.getByRole('button',{name:'EN',exact:true}).click();await page.getByText('Why this price',{exact:true}).waitFor();await page.getByText('Limited sample',{exact:false}).waitFor();
+ await page.getByText('View comparison evidence',{exact:true}).click();
+ await page.getByText('Match score 65%',{exact:false}).waitFor();
+ assert.equal(await page.getByText('匹配度',{exact:false}).count(),0);
+ await page.getByRole('button',{name:'中文',exact:true}).click();
+ await page.getByText('匹配度 65%',{exact:false}).waitFor();
  console.log('PASS: explicit query, material field feedback, low sample, calculation and English explanation.');
 }finally{await browser.close();}
