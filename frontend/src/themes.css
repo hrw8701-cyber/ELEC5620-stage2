@@ -34,17 +34,22 @@ body:has(.theme-buyer) {
   --hero: #873d1c; --hero-text: #ffffff; --hero-muted: #ffe6d3;
   --highlight: #f4bd84; --highlight-text: #3e281b; --highlight-hover: #edab69;
   --focus: #a84216;
+  --success-bg: #fff0e2; --success-text: #8d3510; --success-border: #d6ac8b;
 }
 body:has(.theme-manager) {
-  --page: #f7f5ef; --tint: #f6f2e7; --soft: #eee5ce; --border: #dcd2bc;
-  --ink: #292722; --muted-text: #686052; --accent: #765815;
-  --action: #d8b764; --action-text: #25221b; --action-hover: #c7a34d;
-  --selected: #292722; --selected-text: #f1d691;
-  --nav: #24231f; --nav-text: #ede8dc; --nav-muted: #c5bba5;
-  --nav-selected: #d8b764; --nav-selected-text: #25221b; --nav-hover: #3c382e;
-  --hero: #24231f; --hero-text: #f1d691; --hero-muted: #e1d8c2;
-  --highlight: #d8b764; --highlight-text: #25221b; --highlight-hover: #c7a34d;
-  --focus: #9b741c;
+  color-scheme: dark;
+  --page: #151615; --surface: #20211f; --tint: #272821; --soft: #303027; --border: #56503c;
+  --ink: #eee1be; --muted-text: #c4b99c; --accent: #e6ca85;
+  --action: #e5ce96; --action-text: #27231b; --action-hover: #f0dcac;
+  --selected: #e5ce96; --selected-text: #27231b;
+  --nav: #191a18; --nav-text: #eee1be; --nav-muted: #c4b99c;
+  --nav-selected: #e5ce96; --nav-selected-text: #27231b; --nav-hover: #303027;
+  --hero: #191a18; --hero-text: #f1d691; --hero-muted: #d9cba8;
+  --highlight: #e5ce96; --highlight-text: #27231b; --highlight-hover: #f0dcac;
+  --focus: #e6ca85;
+  --success-bg: #303027; --success-text: #eee1be; --success-border: #75633c;
+  --warning-bg: #342b19; --warning-text: #f2d18a; --warning-border: #8b7137;
+  --danger-bg: #382522; --danger-text: #ffb7a8; --danger-border: #a56657;
 }
 
 /* Canvas, surfaces and typography */
@@ -118,7 +123,7 @@ body:has(.shell) .modal-backdrop { background: var(--overlay); }
 body:has(.shell) :is(.toast,.request-progress) { background: var(--selected); color: var(--selected-text); }
 body:has(.shell) .toast button { color: inherit; }
 
-/* Founder dashboard: gold is an accent on charcoal, never pale text on white. */
+/* Founder dashboard keeps dark surfaces with readable champagne-gold text. */
 body:has(.shell) .hero-metrics { background: var(--hero); color: var(--hero-text); }
 body:has(.shell) .hero-metrics :is(p,small,div>span) { color: var(--hero-muted); }
 body:has(.shell) .hero-metrics strong { color: var(--hero-text); }

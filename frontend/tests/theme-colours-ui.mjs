@@ -7,7 +7,7 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});
  const state=await(await page.request.get(base+'/api/state',{headers:{'X-Demo-Role':'manager'}})).json();
  await page.route('**/api/state',r=>r.fulfill({json:state}));
- const item=state.items.find(x=>x.status==='published')||state.items[0],order=state.orders[0];
+ const item=state.items.find(x=>x.status==='published')||state.items[0],order=state.orders.find(o=>o.status==='settled')||state.orders[0];
  const quote={id:'theme-review-only',itemId:item.id,delivery:{address:'Test address',movers:2,access:'ground'},provider:'Test carrier',expected:'2026-11-01',itemPrice:item.price,deliveryFee:75,total:item.price+75,expires:state.now+9999999,biller:'123456',reference:'123456789'};state.quotes.push(quote);
  const routes=['seller/listings','seller/listings/new','seller/listings/'+item.id,'buyer/discover','buyer/items/'+item.id,'buyer/items/'+item.id+'/delivery','buyer/checkout/'+quote.id,'buyer/orders','buyer/orders/'+order.id,'manager/overview','manager/records/'+order.id,'manager/exceptions','manager/policies'];
  const failures=[],report=[];
@@ -32,8 +32,12 @@ try{
  for(const [i,route] of routes.entries()){
   await page.goto(base+'/#/'+route);await page.locator('.shell').waitFor();
   await page.getByRole('button',{name:'EN',exact:true}).click();
-  const expected={seller:'#214f43',buyer:'#a84216',manager:'#765815'}[route.split('/')[0]];
+  const expected={seller:'#214f43',buyer:'#a84216',manager:'#e6ca85'}[route.split('/')[0]];
   assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).getPropertyValue('--accent').trim()),expected);
+  if(route==='buyer/orders/'+order.id){
+   const success=page.locator('.notice.success');if(await success.count())assert.equal(await success.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 240, 226)');
+  }
+  if(route.startsWith('manager/')){assert.equal(await page.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(21, 22, 21)');for(const panel of await page.locator('.panel').all())assert.notEqual(await panel.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');}
   await check(route);
   await page.screenshot({path:new URL(i+'-'+route.split('/')[0]+'.png',output).pathname.replace(/^\/(?=[A-Z]:)/,'') ,fullPage:true});
   const button=page.locator('.button').first();if(await button.count()){const disabled=await button.evaluate(el=>el.disabled);if(!disabled){await button.evaluate(el=>el.disabled=true);await check(route+' disabled button');await button.evaluate(el=>el.disabled=false);}}

@@ -7,7 +7,7 @@ import { advanceOrder, tick, day, date, money, statuses, uid, log } from './doma
 export function Button({
   children,
   secondary = false,
-  loading = false,
+  loading,
   className = '',
   onClick,
   disabled,
@@ -17,7 +17,8 @@ export function Button({
   const {operation} = useStore();
   const [waiting,setWaiting] = useState(false);
   const locked = React.useRef(false);
-  const busy = loading || waiting || (!!operation && props.type === 'submit');
+  // Explicit loading belongs to this button; unrelated requests only disable it.
+  const busy = waiting || (loading ?? (!!operation && props.type === 'submit'));
   async function click(e){
     if(locked.current)return;
     locked.current=true;

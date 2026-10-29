@@ -8,7 +8,7 @@ try{
  order.events.push({agent:'LogisticsAgent',time:state.now,text:'Test execution',execution:{operation:'advance',requestId:'ui-test-only',steps:[{agent:'LogisticsAgent',mode:'deterministic',summary:'Rule check',modelCall:'not_called',durationMs:4}]}});
  await page.route('**/api/state',r=>r.fulfill({json:state}));
  let calls=0,release;
- await page.route('**/api/actions',async r=>{calls++;await new Promise(resolve=>release=resolve);await r.fulfill({json:{state,result:[]}})});
+ await page.route('**/api/actions',async r=>{calls++;await new Promise(resolve=>release=resolve);await r.fulfill({json:{state,result:r.request().postDataJSON().operation==='listing'?null:[]}})});
  await page.goto(base+'/#/buyer/discover');
  await page.getByRole('button',{name:'EN',exact:true}).click();
  const colours=[];
@@ -19,7 +19,8 @@ try{
  release();await page.locator('.request-progress').waitFor({state:'hidden'});assert.ok(await match.isEnabled());
  await page.goto(base+'/#/seller/listings/new');const price=page.getByTestId('get-suggested-price');await price.waitFor();
  colours.push(await page.locator('.sidebar').evaluate(el=>getComputedStyle(el).backgroundColor));
- await price.click();await page.locator('.request-progress').waitFor();assert.equal(await price.getAttribute('aria-busy'),'true');assert.ok(await price.isDisabled());release();await page.locator('.request-progress').waitFor({state:'hidden'});
+ await price.click();await page.locator('.request-progress').waitFor();assert.equal(await price.getAttribute('aria-busy'),'true');assert.ok(await price.isDisabled());const submit=page.locator('button[type=submit]');assert.ok(await submit.isDisabled());assert.equal(await submit.getAttribute('aria-busy'),'false');assert.equal(await submit.locator('.loading-spinner').count(),0);release();await page.locator('.request-progress').waitFor({state:'hidden'});
+ await submit.click();await page.locator('.request-progress').waitFor();assert.equal(await submit.getAttribute('aria-busy'),'true');assert.equal(await submit.locator('.loading-spinner').count(),1);release();await page.locator('.request-progress').waitFor({state:'hidden'});
  await page.goto(base+'/#/manager/records/'+order.id);await page.locator('.theme-manager').waitFor();
  colours.push(await page.locator('.sidebar').evaluate(el=>getComputedStyle(el).backgroundColor));assert.equal(new Set(colours).size,3);
  await page.locator('.execution-details summary').first().click();await page.getByText('Rule processing · No AI call',{exact:true}).first().waitFor();
