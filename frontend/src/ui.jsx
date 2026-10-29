@@ -1,3 +1,4 @@
+import {ExecutionDetails} from './ExecutionDetails';
 import { useLanguage, translate as _tr } from "./Language";
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -6,10 +7,24 @@ import { advanceOrder, tick, day, date, money, statuses, uid, log } from './doma
 export function Button({
   children,
   secondary = false,
+  loading = false,
+  className = '',
+  onClick,
+  disabled,
   ...props
 }) {
   const _tr = useLanguage();
-  return <button className={secondary ? 'button secondary' : 'button'} {...props}>{_tr(children)}</button>;
+  const {operation} = useStore();
+  const [waiting,setWaiting] = useState(false);
+  const locked = React.useRef(false);
+  const busy = loading || waiting || (!!operation && props.type === 'submit');
+  async function click(e){
+    if(locked.current)return;
+    locked.current=true;
+    try{const result=onClick?.(e);if(result?.then){setWaiting(true);await result;}}
+    finally{locked.current=false;setWaiting(false);}
+  }
+  return <button {...props} className={'button '+(secondary?'secondary ':'')+className} disabled={disabled||busy||!!operation} aria-busy={busy} onClick={click}>{busy&&<span className="loading-spinner" aria-hidden="true"/>}{_tr(children)}</button>;
 }
 export function Field({
   label,
@@ -74,7 +89,7 @@ export function Shell({
   const role = path.split('/')[1];
   const nav = role === 'seller' ? [['我的家具', '/seller/listings', '▦'], ['发布家具', '/seller/listings/new', '＋']] : role === 'buyer' ? [['发现与推荐', '/buyer/discover', '⌕'], ['我的订单', '/buyer/orders', '▤']] : [['经营概览', '/manager/overview', '▦'], ['异常与冲突', '/manager/exceptions', '◇'], ['现行政策', '/manager/policies', '▤']];
   const title = role === 'buyer' ? 'Buyer · 买家' : role === 'seller' ? 'Seller · 卖家' : 'Admin · 经营者';
-  return <div className="shell"><aside className="sidebar"><Link to="/" className="brand"><span className="chair-mark">▰</span>second space</Link><div className="role-label">{_tr(title)}</div><nav>{_tr(nav.map(([label, to, icon]) => <Link key={to} className={path === to || path.startsWith(to + '/') && to.endsWith('orders') ? 'active' : ''} to={to}><span>{_tr(icon)}</span>{_tr(label)}</Link>))}</nav><div className="sidebar-bottom"><p>{_tr("\u65E7\u7269\u65B0\u751F")}<br />{_tr("\u7A7A\u95F4\u7115\u65B0\u3002")}</p><Link to="/">{_tr("\u2190 \u8FD4\u56DE\u89D2\u8272\u5165\u53E3")}</Link></div></aside><div className="workspace"><header className="topbar"><span>⌖ Sydney, NSW</span><span className="top-note">{_tr(title)}</span><span className="avatar">{_tr(role === 'manager' ? 'A' : role[0].toUpperCase())}</span></header><main>{_tr(children)}</main><footer>{_tr("Second Space \xB7 \u7ED9\u597D\u5BB6\u5177\u4E00\u4E2A\u65B0\u5F00\u59CB")}<span>{_tr("\u6F14\u793A\u65F6\u95F4")}{_tr(date(s.now))}</span></footer></div></div>;
+  return <div className={"shell theme-"+role}><aside className="sidebar"><Link to="/" className="brand"><span className="chair-mark">▰</span>second space</Link><div className="role-label">{_tr(title)}</div><nav>{_tr(nav.map(([label, to, icon]) => <Link key={to} className={path === to || path.startsWith(to + '/') && to.endsWith('orders') ? 'active' : ''} to={to}><span>{_tr(icon)}</span>{_tr(label)}</Link>))}</nav><div className="sidebar-bottom"><p>{_tr("\u65E7\u7269\u65B0\u751F")}<br />{_tr("\u7A7A\u95F4\u7115\u65B0\u3002")}</p><Link to="/">{_tr("\u2190 \u8FD4\u56DE\u89D2\u8272\u5165\u53E3")}</Link></div></aside><div className="workspace"><header className="topbar"><span>⌖ Sydney, NSW</span><span className="top-note">{_tr(title)}</span><span className="avatar">{_tr(role === 'manager' ? 'A' : role[0].toUpperCase())}</span></header><main>{_tr(children)}</main><footer>{_tr("Second Space \xB7 \u7ED9\u597D\u5BB6\u5177\u4E00\u4E2A\u65B0\u5F00\u59CB")}<span>{_tr("\u6F14\u793A\u65F6\u95F4")}{_tr(date(s.now))}</span></footer></div></div>;
 }
 export function Breakdown({
   price,
@@ -92,7 +107,7 @@ export function Audit({
     s
   } = useStore();
   const rows = s.audit.filter(a => !object || a.object === object);
-  return <details className="audit"><summary>{_tr("\u67E5\u770B Agent \u51B3\u7B56\u4E0E\u5904\u7406\u8BB0\u5F55")}<Badge>{_tr("\u6A21\u62DF / \u89C4\u5219\u5904\u7406")}</Badge></summary>{_tr(rows.length ? rows.slice().reverse().map(a => <div className="audit-item" key={a.id}><b>{_tr(a.agent)}</b><time>{_tr(date(a.time))}</time><p>{_tr(a.text)}</p></div>) : <p className="muted">{_tr("\u6682\u65E0\u65B0\u589E\u5904\u7406\u8BB0\u5F55\u3002\u9884\u7F6E\u6837\u4F8B\u4E0D\u4F5C\u4E3A\u771F\u5B9E\u6A21\u578B\u8C03\u7528\u8BC1\u636E\u3002")}</p>)}</details>;
+  return <details className="audit"><summary>{_tr("\u67E5\u770B Agent \u51B3\u7B56\u4E0E\u5904\u7406\u8BB0\u5F55")}</summary>{_tr(rows.length ? rows.slice().reverse().map(a => <div className="audit-item" key={a.id}><b>{_tr(a.agent)}</b><time>{_tr(date(a.time))}</time><p>{_tr(a.text)}</p><ExecutionDetails execution={a.execution}/></div>) : <p className="muted">{_tr("\u6682\u65E0\u65B0\u589E\u5904\u7406\u8BB0\u5F55\u3002\u9884\u7F6E\u6837\u4F8B\u4E0D\u4F5C\u4E3A\u771F\u5B9E\u6A21\u578B\u8C03\u7528\u8BC1\u636E\u3002")}</p>)}</details>;
 }
 export function Demo({
   order

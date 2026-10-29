@@ -123,7 +123,7 @@ export function Submit() {
             type: 'date',
             min: day(s.now)
           }))}<Field label={_tr("通行条件 *")}><textarea aria-invalid={!!errors.access} maxLength={500} placeholder={_tr("楼层、电梯 / 楼梯、门宽、装卸区")} value={f.access} onChange={e => set('access', e.target.value)} /></Field>{_tr(error('access'))}<label className="check"><input type="checkbox" checked={f.ownership} onChange={e => set('ownership', e.target.checked)} />{_tr("\u6211\u58F0\u660E\u62E5\u6709\u8BE5\u5BB6\u5177\u5E76\u6709\u6743\u51FA\u552E\u3002")}</label>{_tr(error('ownership'))}</Panel><Panel title={_tr("确认售价")}><div className="suggestion" aria-live="polite">{_tr("参考价格")}<strong data-testid="suggested-price">{suggested ? money(suggested) : '—'}</strong>
-            <button type="button" className="button pricing-request" data-testid="get-suggested-price" disabled={pricingBusy||busy} onClick={getSuggestion}>{_tr(pricingBusy?'正在审核并计算建议价…':'获取建议售价')}</button>
+            <Button loading={pricingBusy} type="button" className="pricing-request" data-testid="get-suggested-price" disabled={pricingBusy||busy} onClick={getSuggestion}>{_tr(pricingBusy?'正在审核并计算建议价…':'获取建议售价')}</Button>
             {estimate?.status!=='ready' && estimate && <p>{_tr(pricingMessages[estimate.status]||pricingMessages.provider_unavailable)}{estimate.status!=='photo_rejected' && estimate.errors && Object.entries(estimate.errors).map(([key,value])=><small style={{display:'block'}} key={key}>{_tr(({name:'家具名称',material:'材质',category:'家具类别',age:'近似年龄（年）',width:'宽度 cm',depth:'深度 cm',height:'高度 cm',front:'正面照片',top:'俯视照片',side:'侧面照片',details:'其他细节照片'})[key]||key)}：{_tr(value)}</small>)}</p>}
             {suggested && <><button type="button" className="text-button" disabled={pricingBusy||pricingChanged} onClick={()=>set('price',suggested)}>{_tr('使用参考价格')}</button><p>{_tr('依据本次查询的公开二手商品挂牌价估算，不代表实际成交价。')}</p><small>{_tr('参考资料采集时间')}：{estimate.retrievedAt}</small><details><summary>{_tr('查看比价依据')}</summary>{estimate.evidence?.map(row=><div key={row.id}><a href={row.url} target="_blank" rel="noopener noreferrer">{row.title}</a><p>{money(row.price)} AUD · {_tr('匹配度')} {row.matchScore}%</p><p>{_tr(row.reason)}</p>{row.adjustmentFactor!==undefined&&<small>{_tr('参数调整后参考价')}：{money(row.adjustedPrice)}</small>}{row.unknowns?.length>0&&<p>{_tr('未提供的参数')}：{row.unknowns.map(x=>_tr(x)).join(', ')}</p>}</div>)}</details></>}
             {estimate&&!pricingChanged&&<PricingExplanation estimate={estimate}/>}
@@ -133,7 +133,7 @@ export function Submit() {
             min: '.01',
             max: '100000',
             step: '.01'
-          }))}<Breakdown price={Number(f.price) || 0} seller /><Button type="submit" disabled={busy||pricingBusy}>{_tr(busy ? '照片处理中…' : recordId ? '修改并重新提交' : '提交并上架')}</Button>{_tr(Object.keys(errors).length > 0 && <p className="field-error">{_tr(reviewStatus.startsWith('review_')?'审核暂未完成，资料已保留，请稍后重新提交。':'请修改标记字段后重新提交。')}</p>)}</Panel></div></form></>;
+          }))}<Breakdown price={Number(f.price) || 0} seller /><Button type="submit" loading={busy} disabled={busy||pricingBusy}>{_tr(busy ? '照片处理中…' : recordId ? '修改并重新提交' : '提交并上架')}</Button>{_tr(Object.keys(errors).length > 0 && <p className="field-error">{_tr(reviewStatus.startsWith('review_')?'审核暂未完成，资料已保留，请稍后重新提交。':'请修改标记字段后重新提交。')}</p>)}</Panel></div></form></>;
 }
 export function ListingDetail() {
   const _tr = useLanguage();

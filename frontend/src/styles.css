@@ -8,3 +8,26 @@
 .photo-slot label{position:relative;display:block;cursor:pointer}.photo-slot input[type=file]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.photo-slot label:focus-within{outline:2px solid #839c75;outline-offset:4px}.detail-file-label{position:relative;display:block;border:1px dashed #b7c5ad;border-radius:6px;padding:10px 15px;background:#fafbf6;margin:10px 0;color:#36543c;cursor:pointer}.detail-file-label input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}.detail-file-label:focus-within{outline:2px solid #839c75}html[lang=en] .welcome h1 span{margin-left:.15em}
 
 .suggestion .pricing-request{display:flex;width:100%;min-height:50px;margin:14px 0;background:#f9d976;color:#26352e;border:1px solid #d5b853;font-weight:700}.suggestion .pricing-request:hover:not(:disabled){background:#f1cd61}.suggestion a{overflow-wrap:anywhere}
+/* Role palettes share saturation/lightness; transaction semantics keep their own colours. */
+body:has(.theme-buyer){--green:hsl(205 28% 30%);--role-soft:hsl(205 24% 92%);--role-tint:hsl(205 22% 97%);--role-border:hsl(205 22% 80%)}
+body:has(.theme-seller){--green:hsl(155 28% 30%);--role-soft:hsl(155 24% 92%);--role-tint:hsl(155 22% 97%);--role-border:hsl(155 22% 80%)}
+body:has(.theme-manager){--green:hsl(270 28% 30%);--role-soft:hsl(270 24% 92%);--role-tint:hsl(270 22% 97%);--role-border:hsl(270 22% 80%)}
+.shell .sidebar{background:var(--role-tint)}
+.shell .sidebar nav a.active,.shell .suggestion,.shell .query-summary,.shell .discover-hero{background:var(--role-soft);color:var(--green)}
+.shell .sidebar nav a.active,.shell .query-summary{border-color:var(--role-border)}
+.shell .avatar,.shell .score,.shell .hero-metrics,.shell .timeline .complete span{background:var(--green);color:#fff}
+.shell .button:not(.secondary),.language-switch button[aria-pressed=true]{background:var(--green);color:#fff}
+.shell .button.secondary{color:var(--green);border-color:var(--role-border)}
+.shell .suggestion .pricing-request{background:var(--green);border-color:var(--green);color:#fff}
+.shell .suggestion .pricing-request:hover:not(:disabled){background:var(--green);filter:brightness(1.1)}
+.shell .tabs .selected{color:var(--green);border-color:var(--green)}
+.shell .query-summary b,.shell .breakdown .total,.shell .brand{color:var(--green)}
+.button[aria-busy=true]{opacity:.85;cursor:progress}
+.loading-spinner{display:inline-block;flex:none;width:1em;height:1em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:request-spin .8s linear infinite;vertical-align:middle;margin-right:.55em}
+@keyframes request-spin{to{transform:rotate(360deg)}}
+.request-progress{position:fixed;bottom:24px;right:24px;z-index:110;background:var(--green);color:#fff;padding:14px 20px;border-radius:12px;box-shadow:0 6px 24px #0002;max-width:calc(100vw - 48px);font-size:14px;pointer-events:none}
+.execution-details{background:var(--role-tint);border:1px solid var(--role-border);border-radius:8px;padding:12px;font-size:12px}
+.execution-details summary{cursor:pointer;color:var(--green);font-weight:600}
+.execution-details li{margin:12px 0;padding:8px 0;border-bottom:1px solid var(--line)}
+.execution-details p{overflow-wrap:anywhere}
+@media(prefers-reduced-motion:reduce){.loading-spinner{animation:none;border-style:dotted}}

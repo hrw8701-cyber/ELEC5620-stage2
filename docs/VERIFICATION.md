@@ -120,3 +120,10 @@ ListingAgent对真实家具的category_match=false单独输出category字段错�
 验证：61项后端测试、23项前端领域测试、生产构建通过。5623浏览器拦截测试通过：手动触发、材质字段错误、少样本提示、计算说明、中英切换。真实联网测试（绕过视觉环节，单独验证PricingAgent）：电竞椅/其他/混合/良好/2年/70×70×125cm，取得11条商品，2条可比，返回AUD119.99，sampleLimited=true，1个来源失败；选定来源conditionFactor=1、ageFactor=1。该尺寸是测试参数，不是用户原图家具尺寸，也不是对用户家具的最终报价。结果保存在本机.runtime/live-pricing-oct29.json。
 
 kind版本已部署且数据库健康。没有改视觉角度审核标准；没有把市场无样本当作阻止合格家具自行定价上架的理由。新来源非官方稳定开发者API，页面结构和接口未来可能变化。
+
+## 2026-10-29 Role themes, pending interaction and execution evidence
+- Buyer blue, seller green, manager/founder purple use matching HSL saturation/lightness. Theme changes are frontend-only.
+- Shared buttons show a spinner while awaiting click handlers; submit buttons follow pending server operations. Store blocks overlapping commands, shows an accessible progress notice, and adds a longer-wait message after 8 seconds. Pricing and matching explicitly expose their busy state.
+- New order events and agent audit records persist request ID and the actual graph decisions. Specialist nodes record elapsed milliseconds and actual model-call outcome; matching with empty text no longer labels keyword processing as a model call.
+- Manager-only expanders display execution summaries and call metadata, not hidden model reasoning. Historical events explicitly lack call evidence. Both public state and action-result serializers remove execution details.
+- Validation: backend 63 passed; frontend domain 23 passed; production build; role-loading-ui browser checks (delayed mock responses, no production mutations) and pricing-explanation-ui passed. kind rollout and health on port 5623 passed. No live AI request was needed for this presentation change.

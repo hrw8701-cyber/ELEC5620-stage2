@@ -98,6 +98,7 @@ def visible(s, actor, token=''):
         for o in view['orders']:
             for event in o['events']:
                 event['agent'] = '系统消息'
+                event.pop('execution', None)
             o.pop('graphThread', None)
         for i in view['items']:
             public_photo_errors(i)
@@ -152,6 +153,7 @@ def result_view(result, actor):
         result.pop('graphThread', None)
         for event in result.get('events', []):
             event['agent'] = '系统消息'
+            event.pop('execution', None)
     return result
 
 
@@ -286,9 +288,15 @@ def action(command: Action, request: Request):
                 raise HTTPException(409, 'Request identifier conflict')
             result = existing['result']
         else:
+            event_counts = {o['id']: len(o['events']) for o in s['orders']}
             result = dispatch(conn, s, op, p, proposal, thread_id)
+            execution = {'requestId': command.requestId, 'operation': op, 'steps': proposal.get('decisions', [])}
+            for order in (s['orders'] if op != 'reset' else []):
+                for event in order['events'][event_counts.get(order['id'], 0):]:
+                    event['execution'] = execution
             for decision in proposal.get('decisions', []):
                 d.audit(s, decision['agent'], decision['summary'] + ' [' + decision['mode'] + ']', p.get('orderId') or (result.get('id', '') if isinstance(result, dict) else ''))
+                s['audit'][-1]['execution'] = execution
             conn.execute('INSERT INTO command_receipts VALUES (%s,%s,%s)', (command.requestId, fingerprint, Jsonb(result)))
         response = {'result': result, 'state': visible(s, actor, p.get('token', ''))}
     # Do not leak internal agent identifiers through returned order results either.
