@@ -9,6 +9,7 @@ import { Listings, Submit, ListingDetail } from './Seller';
 import { Discover, Item, Delivery, Checkout, Orders, OrderDetail } from './Buyer';
 import { Overview, Exceptions, Policies, Property } from './Manager';
 import './styles.css';
+import './themes.css';
 function Home() {
   const _tr = useLanguage();
   const {
