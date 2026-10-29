@@ -123,6 +123,8 @@ def specialist(name):
                 needed = {'name','category','material','condition','age','width','depth','height','front','top','side','details','risk'}
                 errors = {k:v for k,v in errors.items() if k in needed}
                 if f.get('risk') is None: errors.pop('risk',None)
+                from .market_pricing import input_errors
+                errors.update(input_errors(f))
             mode = 'input_validation'
             visual_checks = None
             refs = [(k, (f.get('photos', {}).get(k) or {}).get('ref', '')) for k in ['front', 'top', 'side']]

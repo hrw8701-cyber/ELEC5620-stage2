@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal, InvalidOperation
 import httpx
 
-HOSTS={'www.zirkly.com.au','www.melbourneusedsofas.com.au'}
+HOSTS={'www.zirkly.com.au','www.melbourneusedsofas.com.au','www.cashconverters.com.au'}
 class Page(HTMLParser):
     def __init__(self):
         super().__init__(); self.links=[]; self.json=[]; self.text=[]; self.kind=None; self.buffer=[]; self.hidden=0
@@ -74,6 +74,19 @@ def public_candidates(category, query="", subcategory="tables"):
     rows=[]; failures=[]
     with httpx.Client(timeout=10,headers={'User-Agent':'SecondSpaceResearch/1.0 (public furniture comparison)'}) as client:
         urls=[]
+        # Anonymous JSON endpoint used by the public storefront; verify each product page.
+        cash='https://www.cashconverters.com.au'
+        search_term=next((term for term in ['gaming chair','office chair','bed frame','sofa','chair','table','cabinet'] if query.lower().startswith(term)),query)
+        try:
+            response=client.get(cash+'/c3api/search/results',params={'query':search_term,'NumberOfResults':12})
+            response.raise_for_status()
+            if len(response.content)>2_000_000:raise ValueError('Oversized response')
+            payload=response.json()
+            if not payload.get('WasSuccessful'):raise ValueError('Search unavailable')
+            for item in payload.get('Value',{}).get('ProductList',{}).get('ProductListItems',[])[:12]:
+                url=urljoin(cash,item.get('Url',''))
+                if allowed(url) and url.startswith(cash+'/shop/'):urls.append(url)
+        except (httpx.HTTPError,ValueError,TypeError):failures.append(cash)
         for index in indexes:
             try:
                 page=read(client,index)
@@ -81,11 +94,11 @@ def public_candidates(category, query="", subcategory="tables"):
                 links=[x for x in links if allowed(x) and (('/second-hand-furniture/' in x and '?id=' in x) or '/sofas/MUS-' in x)]
                 terms=set(re.findall(r'[a-z]{3,}',query.lower()))
                 links=sorted(dict.fromkeys(links),key=lambda u:sum(t in urlsplit(u).path.lower() for t in terms),reverse=True)
-                urls.extend(links[:6])
+                urls.extend(links[:18])
             except (httpx.HTTPError,ValueError):failures.append(index)
         def fetch(url):
             try:return product(read(client,url),url)
-            except (httpx.HTTPError,ValueError,TypeError):return None
+            except (httpx.HTTPError,ValueError,TypeError):failures.append(url);return None
         with ThreadPoolExecutor(max_workers=3) as pool:
-            rows=[r for r in pool.map(fetch,list(dict.fromkeys(urls))[:12]) if r]
+            rows=[r for r in pool.map(fetch,list(dict.fromkeys(urls))[:24]) if r]
     return rows,failures

@@ -14,19 +14,20 @@ def test_only_explicit_pricing_route_queries_market():
     assert ROUTES['pricing']==['ListingAgent','PricingAgent']
 
 def test_incomplete_does_not_call_network(monkeypatch):
-    monkeypatch.setattr(public,'public_candidates',lambda *args:pytest.fail('Network should not be called'))
-    assert market_price({})['status']=='incomplete'
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:pytest.fail('Network should not be called'))
+    assert market_price({})['status']=='input_invalid'
 
-def test_cached_pricing_no_network_or_model_and_resists_outlier(monkeypatch):
-    monkeypatch.setattr('app.market_pricing.reference_rows',lambda *args:records())
-    monkeypatch.setattr(public,'public_candidates',lambda *args:pytest.fail('Pricing must use stored references'))
+def test_live_pricing_persists_sources_and_resists_outlier(monkeypatch):
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:(records(),[]))
+    monkeypatch.setattr('app.market_pricing.store',lambda *args:None)
     result=market_price(FORM,lambda *args:pytest.fail('Pricing must not wait for a model'))
     assert result['suggested']==400 and len(result['evidence'])==3
-    assert result['method']=='attribute_weighted_median_v2'
+    assert result['method']=='attribute_weighted_median_v3'
     assert market_price(FORM)['suggested']==result['suggested']
 
 def test_no_platform_fallback(monkeypatch):
-    monkeypatch.setattr('app.market_pricing.reference_rows',lambda *args:[])
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:([],[]))
+    monkeypatch.setattr('app.market_pricing.store',lambda *args:None)
     assert market_price(FORM)['suggested'] is None
 
 def test_wrong_material_and_large_size_excluded():
@@ -40,7 +41,8 @@ def test_unknown_age_not_invented():
     assert result['attributes']['age'] is None and '年限' in result['unknowns']
 
 def test_condition_adjustment_uses_disclosed_evidence(monkeypatch):
-    monkeypatch.setattr('app.market_pricing.reference_rows',lambda *args:records())
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:(records(),[]))
+    monkeypatch.setattr('app.market_pricing.store',lambda *args:None)
     assert market_price(dict(FORM,condition='一般'))['suggested'] < market_price(FORM)['suggested']
 
 @pytest.mark.parametrize('currency,condition,availability,price,valid',[
@@ -57,3 +59,41 @@ def test_fetch_allowlist():
     assert public.allowed('https://www.zirkly.com.au/second-hand-furniture')
     assert not public.allowed('https://www.zirkly.com.au.evil.test/')
     assert not public.allowed('http://127.0.0.1/')
+
+
+@pytest.mark.parametrize('count',[1,2])
+def test_small_sample_still_produces_explained_estimate(monkeypatch,count):
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:(records()[:count],[]))
+    monkeypatch.setattr('app.market_pricing.store',lambda *args:None)
+    r=market_price(FORM)
+    assert r['status']=='ready' and r['sampleLimited']
+    assert r['calculation']['result']==r['suggested']
+    assert r['diagnostics']['matched']==count
+
+
+def test_unknown_material_points_to_field_without_query(monkeypatch):
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:pytest.fail('Invalid form must not query'))
+    r=market_price(dict(FORM,material='LINEAN'))
+    assert r['status']=='input_invalid' and 'material' in r['errors']
+
+
+def test_provider_outage_is_not_form_error(monkeypatch):
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:([],['source']))
+    monkeypatch.setattr('app.market_pricing.store',lambda *args:None)
+    r=market_price(FORM)
+    assert r['status']=='provider_unavailable' and r['errors']=={}
+
+
+def test_gaming_chair_excludes_dining_chair(monkeypatch):
+    rows=[dict(records()[0],title='Dining chair')]
+    monkeypatch.setattr('app.market_pricing.public_candidates',lambda *args:(rows,[]))
+    monkeypatch.setattr('app.market_pricing.store',lambda *args:None)
+    r=market_price(dict(FORM,category='其他',name='电竞椅',material='混合'))
+    assert r['suggested'] is None and r['errors']=={}
+    assert r['diagnostics']['excluded']['subtype']==1
+    assert 'width' in r['warnings']
+
+
+def test_no_damage_is_not_poor_condition():
+    assert attributes({'title':'Chair','description':'Good condition. No major damage.'})['condition']==2
+    assert attributes({'title':'Chair','description':'Light cosmetic wear, fully functional'})['condition']==2
