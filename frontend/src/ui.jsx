@@ -1,4 +1,4 @@
-import {ExecutionDetails} from './ExecutionDetails';
+import {RequestWorkflows} from './ExecutionDetails';
 import { useLanguage, translate as _tr } from "./Language";
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -108,7 +108,9 @@ export function Audit({
     s
   } = useStore();
   const rows = s.audit.filter(a => !object || a.object === object);
-  return <details className="audit"><summary>{_tr("\u67E5\u770B Agent \u51B3\u7B56\u4E0E\u5904\u7406\u8BB0\u5F55")}</summary>{_tr(rows.length ? rows.slice().reverse().map(a => <div className="audit-item" key={a.id}><b>{_tr(a.agent)}</b><time>{_tr(date(a.time))}</time><p>{_tr(a.text)}</p><ExecutionDetails execution={a.execution}/></div>) : <p className="muted">{_tr("\u6682\u65E0\u65B0\u589E\u5904\u7406\u8BB0\u5F55\u3002\u9884\u7F6E\u6837\u4F8B\u4E0D\u4F5C\u4E3A\u771F\u5B9E\u6A21\u578B\u8C03\u7528\u8BC1\u636E\u3002")}</p>)}</details>;
+  const events = s.orders.filter(o=>!object||o.id===object).flatMap(o=>o.events);
+  const legacy = rows.filter(a=>!a.execution);
+  return <details className="audit"><summary>{_tr("请求工作流与历史记录")}</summary><RequestWorkflows records={[...events,...rows]}/>{_tr(legacy.length ? <details><summary>{_tr('其他历史记录（无逐项校验证据）')}</summary>{legacy.slice().reverse().map(a => <div className="audit-item" key={a.id}><b>{_tr(a.agent)}</b><time>{_tr(date(a.time))}</time><p>{_tr(a.text)}</p></div>)}</details> : !rows.length && !events.length && <p className="muted">{_tr("\u6682\u65E0\u65B0\u589E\u5904\u7406\u8BB0\u5F55\u3002\u9884\u7F6E\u6837\u4F8B\u4E0D\u4F5C\u4E3A\u771F\u5B9E\u6A21\u578B\u8C03\u7528\u8BC1\u636E\u3002")}</p>)}</details>;
 }
 export function Demo({
   order

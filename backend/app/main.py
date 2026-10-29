@@ -99,6 +99,7 @@ def visible(s, actor, token=''):
             for event in o['events']:
                 event['agent'] = '系统消息'
                 event.pop('execution', None)
+                event.pop('facts', None)
             o.pop('graphThread', None)
         for i in view['items']:
             public_photo_errors(i)
@@ -154,6 +155,7 @@ def result_view(result, actor):
         for event in result.get('events', []):
             event['agent'] = '系统消息'
             event.pop('execution', None)
+            event.pop('facts', None)
     return result
 
 
@@ -289,8 +291,12 @@ def action(command: Action, request: Request):
             result = existing['result']
         else:
             event_counts = {o['id']: len(o['events']) for o in s['orders']}
+            audit_start = len(s['audit'])
             result = dispatch(conn, s, op, p, proposal, thread_id)
-            execution = {'requestId': command.requestId, 'operation': op, 'steps': proposal.get('decisions', [])}
+            execution = {'requestId': command.requestId, 'operation': op, 'action': p.get('action'), 'steps': proposal.get('decisions', [])}
+            if op != 'reset':
+                for record in s['audit'][audit_start:]:
+                    record['execution'] = execution
             for order in (s['orders'] if op != 'reset' else []):
                 for event in order['events'][event_counts.get(order['id'], 0):]:
                     event['execution'] = execution

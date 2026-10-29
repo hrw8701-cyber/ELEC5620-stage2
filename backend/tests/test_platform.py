@@ -72,6 +72,28 @@ def test_concurrent_buyers_cannot_buy_same_item(client):
     assert len([o for o in db.snapshot()['orders'] if o['item']['id'] == 'F-101']) == 1
 
 
+def test_event_evidence_matches_actions_and_shared_request(client):
+    o = order(client)
+    initial = len(d.find(db.snapshot()['orders'], o['id'])['events'])
+    assert call(client, 'advance', {'orderId': o['id'], 'action': 'deliver'}).status_code == 409
+    assert len(d.find(db.snapshot()['orders'], o['id'])['events']) == initial
+    delivered(client, o)
+    event = d.find(db.snapshot()['orders'], o['id'])['events'][-1]
+    assert event['facts']['action'] == 'deliver'
+    assert event['facts']['checks'] == [{'label': '订单正在配送', 'result': 'passed'}]
+    assert {'field': 'status', 'before': 'transit', 'after': 'received'} in event['facts']['changes']
+    assert event['execution']['action'] == 'deliver'
+    public = ok(call(client, 'advance', {'orderId': o['id'], 'action': 'confirm'}))
+    assert all('facts' not in e and 'execution' not in e for e in public['events'])
+    events = d.find(db.snapshot()['orders'], o['id'])['events'][-2:]
+    assert [e['facts']['action'] for e in events] == ['confirm', 'settle']
+    assert events[0]['execution']['requestId'] == events[1]['execution']['requestId']
+    assert {'field': 'buyerAccepted', 'before': False, 'after': True} in events[0]['facts']['changes']
+    assert not any(c['field'] == 'status' for c in events[0]['facts']['changes'])
+    assert {'field': 'status', 'before': 'received', 'after': 'settled'} in events[1]['facts']['changes']
+    assert {'field': 'held', 'before': True, 'after': False} in events[1]['facts']['changes']
+
+
 def test_idempotency_and_payment_fields(client):
     q = ok(call(client, 'quote', {'itemId': 'F-101', 'delivery': DELIVERY}))
     payload = {'quoteId': q['id'], 'method': 'BPAY'}

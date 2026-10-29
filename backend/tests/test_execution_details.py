@@ -29,6 +29,7 @@ def test_matching_logs_actual_call_not_agent_name(monkeypatch):
     assert decision['modelCall'] == 'succeeded'
     assert decision['endpoint'] == '/v1/chat/completions'
     assert decision['durationMs'] >= 0
+    assert decision['modelDurationMs'] >= 0
     def failed(*args, **kwargs):
         raise TimeoutError()
     monkeypatch.setattr(agents, 'structured_model', failed)

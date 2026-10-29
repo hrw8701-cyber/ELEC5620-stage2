@@ -67,8 +67,21 @@ def audit(s, agent, text, object_id=''):
     s['audit'].append(dict(id=uid('EV'), time=s['now'], agent=agent, text=text, object=object_id))
 
 
-def event(s, order, agent, text):
-    order['events'].append(dict(time=s['now'], agent=agent, text=text))
+def event_snapshot(order):
+    return dict(status=order.get('status'), providerAccepted=bool(order.get('providerAccepted')),
+                held=bool(order.get('held')), buyerAccepted=bool(order.get('buyerAccepted')),
+                delivered=bool(order.get('delivered')), issue=bool(order.get('issue')),
+                property={r['end']: r['status'] for r in order.get('requests', [])})
+
+
+def event(s, order, agent, text, *, action=None, checks=None, before=None):
+    row = dict(time=s['now'], agent=agent, text=text)
+    if action and before is not None:
+        after = event_snapshot(order)
+        row['facts'] = dict(action=action, checks=[dict(label=c, result='passed') for c in (checks or [])],
+                            changes=[dict(field=k, before=before.get(k), after=v)
+                                     for k, v in after.items() if before.get(k) != v])
+    order['events'].append(row)
     audit(s, agent, text, order['id'])
 
 
@@ -205,7 +218,7 @@ def purchase(s, quote_id, method):
     q['consumed'] = True
     i['status'] = 'sold'
     s['orders'].insert(0, order)
-    event(s, order, 'PaymentAgent', '付款完成，订单已创建，等待取货。')
+    event(s, order, 'PaymentAgent', '付款完成，订单已创建，等待取货。', action='purchase', before={}, checks=['付款方式为 Visa/Mastercard 或 BPAY', '报价未使用且未过期', '家具可售且价格与报价一致'])
     return order
 
 
@@ -217,14 +230,16 @@ def property_reply(s, token, reply):
                 raise BusinessError('申请已回复或不存在。')
             if not str(reply.get('name') or '').strip() or reply.get('status') not in ['approved', 'conditional', 'rejected'] or (reply['status'] != 'approved' and not str(reply.get('reason') or '').strip()):
                 raise BusinessError('请填写姓名和必要的条件 / 拒绝原因。')
+            before = event_snapshot(o)
             r.update({k: reply.get(k, '') for k in ['name', 'status', 'reason', 'timeWindow', 'lift', 'loading']}, replyVersion=2, time=s['now'])
-            event(s, o, 'LogisticsAgent', '物业回复已记录：' + reply['status'])
+            event(s, o, 'LogisticsAgent', '物业回复已记录：' + reply['status'], action='property', before=before, checks=['物业申请存在且尚未回复', '回复姓名、状态及必要原因已填写'])
             return o
     raise BusinessError('申请已回复或不存在。')
 
 
 def advance(s, order_id, action, payload=None):
     o = find(s['orders'], order_id)
+    before = event_snapshot(o)
     payload = payload or {}
     if action == 'book':
         if o['status'] != 'pending' or o['providerAccepted']:
@@ -232,36 +247,37 @@ def advance(s, order_id, action, payload=None):
         if any(r['status'] in ['pending', 'rejected'] for r in o['requests']):
             raise BusinessError('必要物业回复未齐或已拒绝。')
         o['providerAccepted'] = True
-        event(s, o, 'LogisticsAgent', '最终检查通过，承运方接受，等待取货。')
+        event(s, o, 'LogisticsAgent', '最终检查通过，承运方接受，等待取货。', action='book', before=before, checks=['订单待取货且承运方尚未接受', '必要物业申请无待回复或拒绝'])
     elif action == 'pickup':
         if o['status'] != 'pending' or not o['providerAccepted']:
             raise BusinessError('取货前须完成最终检查及承运确认。')
         o['status'] = 'transit'
-        event(s, o, 'LogisticsAgent', '承运方已取货，配送中。')
+        event(s, o, 'LogisticsAgent', '承运方已取货，配送中。', action='pickup', before=before, checks=['订单待取货', '承运方已接受'])
     elif action == 'deliver':
         if o['status'] != 'transit':
             raise BusinessError('订单尚未配送。')
         o.update(status='received', delivered=s['now'])
-        event(s, o, 'LogisticsAgent', '物流送达已记录，等待买家验收。')
+        event(s, o, 'LogisticsAgent', '物流送达已记录，等待买家验收。', action='deliver', before=before, checks=['订单正在配送'])
     elif action == 'confirm':
         if o['status'] == 'settled':
             return o
         if o['status'] != 'received' or o.get('issue') or not o.get('delivered') or not o.get('held'):
             raise BusinessError('当前不能确认收货。')
         o['buyerAccepted'] = s['now']
-        event(s, o, 'Buyer', '买家验收通过，交易完成。')
+        event(s, o, 'Buyer', '买家验收通过，交易完成。', action='confirm', before=before, checks=['订单已收货且有送达记录', '没有未解决的交付问题', '资金仍处于留置状态'])
+        before = event_snapshot(o)
         o.update(status='settled', held=False, payoutKey=o.get('payoutKey') or uid('OUT'), settledAt=s['now'])
-        event(s, o, 'PaymentAgent', '结算完成。卖家 ' + money((cents(o['item']['price']) - cents(Decimal(str(o['item']['price'])) * Decimal('.02'))) / 100) + '；物流方 ' + money((cents(o['deliveryFee']) - cents(Decimal(str(o['deliveryFee'])) * Decimal('.1'))) / 100))
+        event(s, o, 'PaymentAgent', '结算完成。卖家 ' + money((cents(o['item']['price']) - cents(Decimal(str(o['item']['price'])) * Decimal('.02'))) / 100) + '；物流方 ' + money((cents(o['deliveryFee']) - cents(Decimal(str(o['deliveryFee'])) * Decimal('.1'))) / 100), action='settle', before=before, checks=['同一请求中的买家验收条件已通过'])
     elif action == 'issue':
         if o['status'] != 'received' or not payload.get('text', '').strip() or not payload.get('evidence', '').strip():
             raise BusinessError('问题和证据说明都需要填写。')
         o['issue'] = dict(text=payload['text'], evidence=payload['evidence'], created=s['now'])
-        event(s, o, 'SupervisionAgent', '交付问题已记录，等待处理。')
+        event(s, o, 'SupervisionAgent', '交付问题已记录，等待处理。', action='issue', before=before, checks=['订单已收货', '问题描述和证据说明非空'])
     elif action == 'resolve':
         if not o.get('issue'):
             raise BusinessError('没有待处理问题。')
         o['issue'] = None
-        event(s, o, 'SupervisionAgent', '问题已处理，等待买家验收。')
+        event(s, o, 'SupervisionAgent', '问题已处理，等待买家验收。', action='resolve', before=before, checks=['订单存在待处理问题'])
     else:
         raise BusinessError('未知操作。')
     return o

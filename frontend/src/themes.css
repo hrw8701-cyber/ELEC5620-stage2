@@ -128,3 +128,7 @@ body:has(.shell) .hero-metrics { background: var(--hero); color: var(--hero-text
 body:has(.shell) .hero-metrics :is(p,small,div>span) { color: var(--hero-muted); }
 body:has(.shell) .hero-metrics strong { color: var(--hero-text); }
 body:has(.shell) .mini-chart span { background: var(--highlight); }
+.event-facts{border-left:2px solid var(--border);padding:4px 12px;margin:12px 0;color:var(--ink)}
+.event-facts ul{margin:6px 0 12px;padding-left:20px}
+.event-facts li{margin:4px 0}
+.event-facts .text-button{font-size:12px}
