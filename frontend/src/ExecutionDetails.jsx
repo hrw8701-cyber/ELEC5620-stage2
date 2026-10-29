@@ -41,6 +41,8 @@ export function ExecutionDetails({execution}){
     <p>{t('职责说明')}：{t(duties[step.agent]||'业务流程处理')}</p>
     <span className="badge">{t(called?(step.modelCall==='succeeded'?'AI 调用成功':'AI 调用失败'):knownNoCall?'规则处理 · 未调用 AI':'无模型调用记录')}</span>
     {called&&<p>{t('模型')}: {step.model||t('未记录')}<br/>{t('接口')}: {step.endpoint?'POST '+step.endpoint:t('未记录')}<br/>{t('调用耗时')}: {step.modelDurationMs==null?t('未单独记录'):step.modelDurationMs+' ms'}</p>}
+    {step.selection&&<p><b>{t('选择的工具')}:</b> {step.selection}{step.selectionReason&&<><br/>{t('调用目的')}: {step.selectionReason}</>}</p>}
+    {!!step.tools?.length&&<div><b>{t('实际工具调用')}</b>{step.tools.map((tool,j)=><details key={j}><summary>{tool.name} · {t(tool.status==='succeeded'?'通过':'未通过')}</summary><p>{t('耗时')}: {tool.durationMs==null?t('未单独记录'):tool.durationMs+' ms'}</p><pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{typeof tool.result==='string'?tool.result:JSON.stringify(tool.result??{},null,2)}</pre></details>)}</div>}
    </li>;
   })}</ol>
   {!execution.steps?.length&&<p>{t('本次为服务端规则处理，无 AI 调用。')}</p>}

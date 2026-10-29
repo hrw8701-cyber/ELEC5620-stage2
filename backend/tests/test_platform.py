@@ -189,10 +189,10 @@ def test_photo_upload_and_unavailable_vision(client, monkeypatch):
     form['photos']['details'] = []
     monkeypatch.setattr(config, 'MODEL_MODE', 'live')
     monkeypatch.setattr('app.agents.structured_model', lambda *a: (_ for _ in ()).throw(RuntimeError('Unavailable')))
-    rejected = ok(call(client, 'listing', {'form': form}, 'seller'))
-    assert rejected['status'] == 'rejected'
-    assert rejected['reviewStatus']=='review_unavailable'
-    assert '尚未判定' in rejected['errors']['front']
+    before=len(db.snapshot()['items'])
+    rejected = call(client, 'listing', {'form': form}, 'seller')
+    assert rejected.status_code == 503 and rejected.json()['retryable']
+    assert len(db.snapshot()['items']) == before
 
 
 def test_invalid_payload_and_roles(client):
@@ -217,13 +217,13 @@ def test_failed_purchase_rolls_back_and_concurrent_acceptance_settles_once(clien
         assert conn.execute('SELECT count(*) AS n FROM settlements WHERE order_id=%s', (o['id'],)).fetchone()['n'] == 1
 
 
-def test_model_empty_response_uses_recorded_keyword_fallback(client, monkeypatch):
+def test_model_empty_response_does_not_use_keyword_fallback(client, monkeypatch):
     from app.agents import Preferences
     monkeypatch.setattr(config, 'MODEL_MODE', 'live')
-    monkeypatch.setattr('app.agents.structured_model', lambda *args: Preferences(tags=[]))
+    monkeypatch.setattr('app.agents.structured_model', scripted_model(lambda: Preferences(tags=[])))
     result = ok(call(client, 'recommend', {'profile': db.seed()['profile']}))
-    assert result and '绿色' in result[0]['requestedTags']
-    assert any('keyword_fallback_empty' in e['text'] for e in db.snapshot()['audit'])
+    assert result and result[0]['requestedTags']==[]
+    assert not any('fallback' in e['text'] for e in db.snapshot()['audit'])
 
 
 def test_heic_upload_and_size_boundary(client):
@@ -261,7 +261,7 @@ def test_pricing_requires_furniture_and_matching_category(client,monkeypatch,rea
     form=deepcopy(db.seed()['items'][0])
     form['photos']={k:uploaded for k in ['front','top','side']};form['photos']['details']=[]
     monkeypatch.setattr(config,'MODEL_MODE','live')
-    monkeypatch.setattr('app.agents.structured_model',lambda *a,**kw:VisualAssessment(approved=True,depicts_real_furniture=real_furniture,category_match=category_match,directions_match=True,description_match=True,clear_and_relevant=True,reasons=['Not furniture or category mismatch']))
+    monkeypatch.setattr('app.agents.structured_model',scripted_model(lambda:VisualAssessment(approved=True,depicts_real_furniture=real_furniture,category_match=category_match,directions_match=True,description_match=True,clear_and_relevant=True,reasons=['Not furniture or category mismatch'])))
     monkeypatch.setattr('app.market_pricing.market_price',lambda *a:pytest.fail('Rejected photos must never reach pricing'))
     result=ok(call(client,'pricing',{'form':form},'seller'))
     assert result['suggested'] is None and result['status']==('category_mismatch' if real_furniture else 'photo_rejected')
@@ -301,3 +301,16 @@ def test_delivery_preview_matches_fixed_quote(client):
     q=ok(call(client,'quote',{'itemId':'F-101','delivery':dict(DELIVERY,address='20 High Street, Penrith NSW 2750')}))
     assert q['deliveryFee']==far[0]['price']
     assert far[1]['price']>far[0]['price']
+
+
+def scripted_model(assessment):
+    """Offline planner double; production always calls the campus model."""
+    def invoke(schema,prompt,content,**kwargs):
+        from app.agent_tools import Selection
+        import json
+        if schema is Selection:
+            available=json.loads(content)['tools']
+            selected=next(k for k in available if k not in ('read_policy','inspect_request'))
+            return Selection(tool=selected,reason='Offline test choice')
+        return assessment()
+    return invoke

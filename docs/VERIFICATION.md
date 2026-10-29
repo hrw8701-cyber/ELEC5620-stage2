@@ -147,3 +147,16 @@ kind版本已部署且数据库健康。没有改视觉角度审核标准；没�
 - Workflow nodes display short responsibility phrases, not static summaries as proof. Only recorded model attempts show model/endpoint/outcome. A separate model-call timer is persisted; old node timings are not relabelled as API timings. Nodes with no model call show no timing or model fields.
 - Both public state and action-result serializers remove internal facts and execution details. Buyer/seller presentation remains unchanged.
 - Verification: backend 64 passed including failed-transition/no-event, delivery-only prerequisites, two acceptance events sharing one request, distinct before/after snapshots and role sanitization. Browser event-evidence-ui passed for deduplication across events/audit, jump links, bilingual rendering, historical fallback, short duties, model-only metadata and buyer isolation. role-loading-ui and all 53 theme contrast checks passed. Frontend build, backend/frontend Kubernetes rollouts and 5623 health passed. Browser fixtures were intercepted and did not mutate production records or call a real model.
+
+## 2026-10-29 — model-selected request-scoped tools
+
+- Live LangGraph nodes now use campus-qwen JSON tool selection and LangChain StructuredTool execution; see AGENT-TOOLS.md for the bounded tool contract and commit boundary.
+- No live keyword fallback. Model failures/invalid choices stop before business commit, return retryable 503, preserve current form entries, and record sanitized admin evidence.
+- Pricing uses separate public-market search and estimate tools, with enforced photo-review/search prerequisites.
+- Logistics/payment preparation runs existing business validation on snapshots. Transaction commit rechecks current state; no changes to fees, acceptance prerequisites or idempotency rules.
+- Backend: 71 tests passed, including live-mode planner doubles, unauthorized/early tool selection, invalid delivery, failure after preparation, immutable source state, atomic settlement, and search-before-estimate.
+- Frontend: 23 domain tests passed; production Vite/Docker build passed.
+- Deployed browser tests: event-evidence-ui.mjs and agent-retry-ui.mjs passed. These use mocked responses for UI assertions; they do not claim real model execution.
+- Real campus-qwen checks: a direct selection chose inspect_request (~1.7 s). An in-memory complete delivery preparation ran supervisor/specialist tool loops with actual model calls and left source state unchanged.
+- Deployed GET /api/reports on port 5623 succeeded with seven actual campus-qwen calls (about 1.3–2.0 s each), including policy reading, AuditReportingAgent delegation, inspection and read_report. Sanitized execution evidence was found in the admin audit. No existing order was changed.
+- Full kind deployment plus final backend/frontend rollouts succeeded; CloudSQL health is ok. Existing historical events remain unchanged and do not acquire fabricated model evidence.

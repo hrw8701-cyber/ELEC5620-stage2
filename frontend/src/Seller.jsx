@@ -83,11 +83,11 @@ export function Submit() {
     try {
       const result=await run('pricing',{form:input});
       if(stamp!==requestEpoch.current)return;
-      setEstimate(result||{status:'provider_unavailable'});
+      setEstimate(result||{status:'request_incomplete'});
       setPricedInput(JSON.stringify(input));
     } finally { if(stamp===requestEpoch.current)setPricingBusy(false); }
   }
-  const pricingMessages={category_mismatch:'照片中的家具与所选类别不一致，请检查家具类别；椅子、桌子、柜子请选择“其他”。',review_input_limit:'图片审核请求超过服务输入限制，尚未完成审核；请联系平台处理。',review_busy:'图片审核服务繁忙，请稍后重试；尚未判定图片是否合格。',review_timeout:'图片审核超时，请稍后重试；尚未判定图片是否合格。',review_unavailable:'图片审核服务暂不可用，请稍后重试；尚未判定图片是否合格。',input_invalid:'家具资料不完整或格式不正确，请检查以下字段。',photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'外部来源未找到符合条件的可比商品。这不代表表单填写错误，你仍可自行定价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
+  const pricingMessages={request_incomplete:'本次请求未完成，已填写的资料保留，请重试。',category_mismatch:'照片中的家具与所选类别不一致，请检查家具类别；椅子、桌子、柜子请选择“其他”。',review_input_limit:'图片审核请求超过服务输入限制，尚未完成审核；请联系平台处理。',review_busy:'图片审核服务繁忙，请稍后重试；尚未判定图片是否合格。',review_timeout:'图片审核超时，请稍后重试；尚未判定图片是否合格。',review_unavailable:'图片审核服务暂不可用，请稍后重试；尚未判定图片是否合格。',input_invalid:'家具资料不完整或格式不正确，请检查以下字段。',photo_rejected:'上传图片不符合平台政策',incomplete:'请先填写家具名称、类别、材质、成色、年限和尺寸。',not_configured:'外部比价服务尚未配置，暂时无法获取建议售价。',insufficient:'外部来源未找到符合条件的可比商品。这不代表表单填写错误，你仍可自行定价。',provider_unavailable:'外部商品查询失败，请稍后重试。',model_unavailable:'商品比对暂时不可用，请稍后重试。'};
   if (existing && existing.status !== 'rejected') return <Empty text={_tr("此家具不能修改")} to={'/seller/listings/' + listingId} />;
   async function submit(e) {
     e.preventDefault();

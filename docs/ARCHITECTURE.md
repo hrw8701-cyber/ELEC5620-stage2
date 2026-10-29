@@ -86,3 +86,5 @@ ListingAgent 负责真实上传照片的自动审核；审核通过即上架，�
 ## 手动外部比价（2026-10-23）
 
 新业务参考价格为空，页面挂载、修改类别和提交上架不触发估价。`pricing` 接收家具资料 `form`；提交上架不再触发 PricingAgent；主动估价先由 ListingAgent 审核照片和类别，通过才进行外部比价。主动请求的来源、实际抓取记录与匹配结果随 command receipt 保存。详见 [公开比价说明](PUBLIC-PRICING.md)。
+
+The live orchestration described above is superseded by the model-selected request-scoped tool workflow in [AGENT-TOOLS.md](AGENT-TOOLS.md) as of 2026-10-29. Fixture mode remains explicit and is never an automatic fallback.

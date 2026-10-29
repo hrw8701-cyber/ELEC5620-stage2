@@ -109,14 +109,14 @@ def score_row(subject,row,diagnostics=None):
     factor=max(.7,min(1.3,factor))
     return dict(row,matchScore=round(score),unknowns=unknown,reason='；'.join(facts) or '同类二手家具',attributes=a,conditionFactor=round(condition_factor,4),ageFactor=round(age_factor,4),adjustmentFactor=round(factor,4),adjustedPrice=round(float(row['price'])*factor,2))
 
-def market_price(form, model=None):
+def market_price(form, model=None, *, candidates=None):
     subject={k:form.get(k) for k in FIELDS}
     errors=input_errors(subject)
     if errors:return unavailable('input_invalid',errors=errors)
     kind,query,section=subtype(subject)
     query=query+' '+subject['material']+' '+subject['name']
     now=datetime.now(timezone.utc).isoformat()
-    try:rows,failures=public_candidates(subject['category'],query,section)
+    try:rows,failures=candidates if candidates is not None else public_candidates(subject['category'],query,section)
     except Exception:return unavailable('provider_unavailable',errors={},searchedAt=now)
     diagnostics={};eligible=[]
     rows=[dict(r,observedAt=now) for r in rows]

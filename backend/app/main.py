@@ -5,6 +5,7 @@ from hashlib import sha256
 import io
 import json
 import math
+import time
 from pathlib import Path
 from threading import Lock
 import warnings
@@ -18,6 +19,7 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.types import Command
 from . import config, database as db, domain as d, demo_clock
 from .agents import build_graph, ROUTES
+from .agent_tools import AgentUnavailable
 
 register_heif_opener()
 Image.MAX_IMAGE_PIXELS = 40_000_000
@@ -40,6 +42,19 @@ async def lifespan(app):
 
 
 app = FastAPI(title='Second Space API', version='0.2.0', lifespan=lifespan)
+
+
+@app.exception_handler(AgentUnavailable)
+async def agent_unavailable(request, exc):
+    # No business transaction has committed. Persist only the sanitized failure trace.
+    try:
+        command=await request.json()
+    except Exception:
+        command={}
+    with db.transaction() as (_, s):
+        d.audit(s, 'SupervisionAgent', 'AI 请求未完成，业务未提交，请重试。',command.get('payload',{}).get('orderId',''))
+        s['audit'][-1]['execution'] = {'requestId':command.get('requestId') or d.uid('FAILED'), 'operation':command.get('operation','report'), 'steps':exc.steps}
+    return JSONResponse(status_code=503, content={'detail':str(exc), 'retryable':True})
 
 
 @app.exception_handler(d.BusinessError)
@@ -160,7 +175,11 @@ def result_view(result, actor):
 
 
 def graph_context(s, operation, payload):
-    return {'now': s['now'],
+    snapshot={k:deepcopy(s[k]) for k in ('now','items','orders','quotes','policies','exceptions')}
+    snapshot['audit']=[]
+    for order in snapshot['orders']:
+        order['events']=[]
+    return {'now': s['now'], 'snapshot': snapshot, 'deadline':time.monotonic()+150,
             'hasPolicy': any(p['id'] == 'P-EXTRA' and p['active'] for p in s['policies'])}
 
 
@@ -181,6 +200,10 @@ def ensure_media(form):
 
 
 def dispatch(conn, s, operation, p, proposal, thread_id):
+    if config.MODEL_MODE == 'live' and operation in {'quote','purchase','advance','property','conflict'}:
+        prepared=proposal.get('result',{}).get('prepared',{})
+        if prepared != {'operation':operation,'action':p.get('action')}:
+            raise AgentUnavailable(proposal.get('decisions',[]))
     if operation == 'listing':
         ensure_media(p['form'])
         assessment = proposal.get('result', {}).get('assessment')
@@ -278,7 +301,10 @@ def action(command: Action, request: Request):
         with graph_lock:
             current = app.state.graph.get_state(options)
             if not current.values:
-                app.state.graph.invoke({'operation': 'conflict', 'payload': {'orderId': ex['orderId']}, 'context': {'hasPolicy': False}, 'cursor': 0, 'decisions': []}, options)
+                app.state.graph.invoke({'operation': 'conflict', 'payload': {'orderId': ex['orderId']}, 'context': graph_context(snapshot,'conflict',p), 'cursor': 0, 'decisions': []}, options)
+            else:
+                # A human may reply days later; refresh snapshot and request budget.
+                app.state.graph.update_state(options, {'context':graph_context(snapshot,'conflict',p)})
             proposal = app.state.graph.invoke(Command(resume={'reason': p['reason']}), options)
             if not proposal.get('human'):
                 raise d.BusinessError('人工决策尚未完成。')
@@ -326,8 +352,12 @@ def reports(request: Request, start: str, end: str):
     result = dict(count=len(rows), sales=sum(d.cents(o['item']['price']) for o in rows) / 100, income=income / 100,
                   held=sum(d.cents(o['total']) for o in rows if o['held']) / 100,
                   stages={k: sum(o['status'] == k for o in rows) for k in ['pending', 'transit', 'received', 'settled']})
+    report_id=d.uid('REPORT')
     with graph_lock:
-        app.state.graph.invoke({'operation': 'report', 'context': {'report': result}, 'cursor': 0, 'decisions': []}, {'configurable': {'thread_id': d.uid('REPORT')}})
+        proposal=app.state.graph.invoke({'operation': 'report', 'context': {**graph_context(s,'report',{}),'report':result}, 'cursor': 0, 'decisions': [],'result':{}}, {'configurable': {'thread_id':report_id}})
+    with db.transaction() as (_, current):
+        d.audit(current,'AuditReportingAgent','经营报表查询完成。')
+        current['audit'][-1]['execution']={'requestId':report_id,'operation':'report','steps':proposal.get('decisions',[])}
     return result
 
 
